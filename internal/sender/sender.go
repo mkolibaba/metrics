@@ -1,11 +1,9 @@
 package sender
 
 import (
-	"fmt"
 	"github.com/mkolibaba/metrics/internal/collector"
+	"github.com/mkolibaba/metrics/internal/http/client"
 	"log"
-	"net/http"
-	"strconv"
 	"time"
 )
 
@@ -13,10 +11,11 @@ const reportInterval = 10 * time.Second
 
 type MetricsSender struct {
 	collector *collector.MetricsCollector
+	serverApi client.ServerApi
 }
 
-func NewMetricsSender(collector *collector.MetricsCollector) *MetricsSender {
-	return &MetricsSender{collector}
+func NewMetricsSender(collector *collector.MetricsCollector, serverApi client.ServerApi) *MetricsSender {
+	return &MetricsSender{collector, serverApi}
 }
 
 func (m *MetricsSender) StartCollectAndSend() {
@@ -31,18 +30,15 @@ func (m *MetricsSender) StartCollectAndSend() {
 
 func (m *MetricsSender) send() {
 	for k, v := range m.collector.Gauges {
-		sendMetric("gauge", k, strconv.FormatFloat(v, 'f', 4, 64))
+		err := m.serverApi.UpdateGauge(k, v)
+		if err != nil {
+			log.Print(err)
+		}
 	}
 	for k, v := range m.collector.Counters {
-		sendMetric("counter", k, strconv.FormatInt(v, 10))
-	}
-}
-
-func sendMetric(t, name, val string) {
-	url := fmt.Sprintf("http://localhost:8080/update/%s/%s/%s", t, name, val)
-	fmt.Printf("Sending POST %s\n", url)
-	_, err := http.Post(url, "text/plain", nil)
-	if err != nil {
-		log.Print(err)
+		err := m.serverApi.UpdateCounter(k, v)
+		if err != nil {
+			log.Print(err)
+		}
 	}
 }

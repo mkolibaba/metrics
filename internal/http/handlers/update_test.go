@@ -69,6 +69,7 @@ func TestUpdateHandlerShouldReturnCorrectStatus(t *testing.T) {
 		t.Run(fmt.Sprintf("POST %s should return response with status %d", c.url, c.wantStatus), func(t *testing.T) {
 			store := &SpyMetricsStorage{}
 			response := sendUpdateRequest(t, store, c.url)
+			defer response.Body.Close()
 
 			assert.Equal(t, c.wantStatus, response.StatusCode)
 		})
@@ -131,6 +132,7 @@ func sendUpdateRequest(t *testing.T, store *SpyMetricsStorage, url string) *http
 
 	handler := NewUpdateHandler(store)
 	handler(recorder, request)
+	defer recorder.Result().Body.Close()
 
 	return recorder.Result()
 }
