@@ -11,11 +11,11 @@ const reportInterval = 10 * time.Second
 
 type MetricsSender struct {
 	collector *collector.MetricsCollector
-	serverApi client.ServerApi
+	serverAPI client.ServerAPI
 }
 
-func NewMetricsSender(collector *collector.MetricsCollector, serverApi client.ServerApi) *MetricsSender {
-	return &MetricsSender{collector, serverApi}
+func NewMetricsSender(collector *collector.MetricsCollector, serverAPI client.ServerAPI) *MetricsSender {
+	return &MetricsSender{collector, serverAPI}
 }
 
 func (m *MetricsSender) StartCollectAndSend() {
@@ -30,13 +30,13 @@ func (m *MetricsSender) StartCollectAndSend() {
 
 func (m *MetricsSender) send() {
 	for k, v := range m.collector.Gauges {
-		err := m.serverApi.UpdateGauge(k, v)
+		err := m.serverAPI.UpdateGauge(k, v)
 		if err != nil {
 			log.Print(err)
 		}
 	}
 	for k, v := range m.collector.Counters {
-		err := m.serverApi.UpdateCounter(k, v)
+		err := m.serverAPI.UpdateCounter(k, v)
 		if err != nil {
 			log.Print(err)
 		}

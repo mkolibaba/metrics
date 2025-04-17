@@ -6,7 +6,7 @@ import (
 	"strconv"
 )
 
-type ServerApi interface {
+type ServerAPI interface {
 	UpdateCounter(name string, value int64) error
 	UpdateGauge(name string, value float64) error
 }

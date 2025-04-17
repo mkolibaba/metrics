@@ -68,10 +68,9 @@ func TestUpdateHandlerShouldReturnCorrectStatus(t *testing.T) {
 	for _, c := range cases {
 		t.Run(fmt.Sprintf("POST %s should return response with status %d", c.url, c.wantStatus), func(t *testing.T) {
 			store := &SpyMetricsStorage{}
-			response := sendUpdateRequest(t, store, c.url)
-			defer response.Body.Close()
+			statusCode := sendUpdateRequest(t, store, c.url)
 
-			assert.Equal(t, c.wantStatus, response.StatusCode)
+			assert.Equal(t, c.wantStatus, statusCode)
 		})
 	}
 }
@@ -125,14 +124,16 @@ func TestUpdateHandlerCallsStoreCorrectly(t *testing.T) {
 	})
 }
 
-func sendUpdateRequest(t *testing.T, store *SpyMetricsStorage, url string) *http.Response {
+func sendUpdateRequest(t *testing.T, store *SpyMetricsStorage, url string) int {
 	t.Helper()
 	request := httptest.NewRequest(http.MethodPost, url, nil)
 	recorder := httptest.NewRecorder()
 
 	handler := NewUpdateHandler(store)
 	handler(recorder, request)
-	defer recorder.Result().Body.Close()
 
-	return recorder.Result()
+	response := recorder.Result()
+	defer response.Body.Close()
+
+	return response.StatusCode
 }
