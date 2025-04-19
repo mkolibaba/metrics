@@ -1,8 +1,7 @@
 package client
 
 import (
-	"fmt"
-	"net/http"
+	"github.com/go-resty/resty/v2"
 	"strconv"
 )
 
@@ -22,10 +21,12 @@ func (s *ServerClient) UpdateGauge(name string, value float64) error {
 }
 
 func sendMetric(t, name, val string) error {
-	url := fmt.Sprintf("http://localhost:8080/update/%s/%s/%s", t, name, val)
-	resp, err := http.Post(url, "text/plain", nil)
-	if resp != nil {
-		defer resp.Body.Close()
-	}
+	_, err := resty.New().R().
+		SetPathParams(map[string]string{
+			"t":    t,
+			"name": name,
+			"val":  val,
+		}).
+		Post("http://localhost:8080/update/{t}/{name}/{val}")
 	return err
 }

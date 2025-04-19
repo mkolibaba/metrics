@@ -1,8 +1,12 @@
-package handlers
+package update_test
 
 import (
 	"fmt"
+	"github.com/go-resty/resty/v2"
+	"github.com/mkolibaba/metrics/internal/http/router"
+	"github.com/mkolibaba/metrics/internal/storage"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -13,6 +17,22 @@ type SpyMetricsStorage struct {
 	namesPassed          []string
 	gaugesValuesPassed   []float64
 	countersValuesPassed []int64
+}
+
+func (s *SpyMetricsStorage) GetGauges() map[string]float64 {
+	return nil // TODO: реализовать при необходимости
+}
+
+func (s *SpyMetricsStorage) GetCounters() map[string]int64 {
+	return nil // TODO: реализовать при необходимости
+}
+
+func (s *SpyMetricsStorage) GetGauge(name string) (float64, error) {
+	return 0, nil // TODO: реализовать при необходимости
+}
+
+func (s *SpyMetricsStorage) GetCounter(name string) (int64, error) {
+	return 0, nil // TODO: реализовать при необходимости
 }
 
 func (m *SpyMetricsStorage) UpdateGauge(name string, value float64) {
@@ -68,9 +88,9 @@ func TestUpdateHandlerShouldReturnCorrectStatus(t *testing.T) {
 	for _, c := range cases {
 		t.Run(fmt.Sprintf("POST %s should return response with status %d", c.url, c.wantStatus), func(t *testing.T) {
 			store := &SpyMetricsStorage{}
-			statusCode := sendUpdateRequest(t, store, c.url)
+			response := sendUpdateRequest(t, store, c.url)
 
-			assert.Equal(t, c.wantStatus, statusCode)
+			assert.Equal(t, c.wantStatus, response.StatusCode())
 		})
 	}
 }
@@ -124,16 +144,18 @@ func TestUpdateHandlerCallsStoreCorrectly(t *testing.T) {
 	})
 }
 
-func sendUpdateRequest(t *testing.T, store *SpyMetricsStorage, url string) int {
+func sendUpdateRequest(t *testing.T, store storage.MetricsStorage, url string) *resty.Response {
 	t.Helper()
-	request := httptest.NewRequest(http.MethodPost, url, nil)
-	recorder := httptest.NewRecorder()
 
-	handler := NewUpdateHandler(store)
-	handler(recorder, request)
+	srv := httptest.NewServer(router.New(store))
+	defer srv.Close()
 
-	response := recorder.Result()
-	defer response.Body.Close()
+	request := resty.New().R()
+	request.Method = http.MethodPost
+	request.URL = srv.URL + url
 
-	return response.StatusCode
+	response, err := request.Send()
+	require.NoError(t, err)
+
+	return response
 }

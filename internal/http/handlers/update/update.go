@@ -1,33 +1,22 @@
-package handlers
+package update
 
 import (
+	"github.com/go-chi/chi/v5"
 	"github.com/mkolibaba/metrics/internal/storage"
 	"net/http"
 	"strconv"
-	"strings"
 )
 
 const (
 	MetricGauge   = "gauge"
 	MetricCounter = "counter"
-
-	RouteUpdate = "/update/"
 )
 
-func NewUpdateHandler(store storage.MetricsStorage) http.HandlerFunc {
+func New(store storage.MetricsStorage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodPost {
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-
-		pathVariables := strings.Split(strings.TrimPrefix(r.URL.Path, RouteUpdate), "/")
-		if len(pathVariables) != 3 {
-			w.WriteHeader(http.StatusNotFound)
-			return
-		}
-
-		t, name, val := pathVariables[0], pathVariables[1], pathVariables[2]
+		t := chi.URLParam(r, "type")
+		name := chi.URLParam(r, "name")
+		val := chi.URLParam(r, "value")
 
 		switch t {
 		case MetricGauge:

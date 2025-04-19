@@ -1,14 +1,7 @@
 package main
 
-import (
-	"github.com/mkolibaba/metrics/internal/collector"
-	"github.com/mkolibaba/metrics/internal/http/client"
-	"github.com/mkolibaba/metrics/internal/sender"
-)
+import "github.com/mkolibaba/metrics/internal/app/agent"
 
 func main() {
-	metricsSender := sender.NewMetricsSender(collector.NewMetricsCollector(), &client.ServerClient{})
-	metricsSender.StartCollectAndSend()
-
-	select {}
+	agent.Run()
 }
