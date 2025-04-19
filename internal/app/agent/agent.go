@@ -5,9 +5,12 @@ import (
 	"github.com/mkolibaba/metrics/internal/config"
 	"github.com/mkolibaba/metrics/internal/http/client"
 	"github.com/mkolibaba/metrics/internal/sender"
+	"log"
 )
 
 func Run() {
+	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
+
 	cfg := config.LoadAgentConfig()
 
 	c := collector.NewMetricsCollector(cfg.PollInterval)

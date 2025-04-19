@@ -9,6 +9,8 @@ import (
 )
 
 func Run() {
+	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
+
 	serverAddress := config.LoadServerConfig().ServerAddress
 
 	store := inmemory.NewMemStorage()
