@@ -1,6 +1,7 @@
 package server
 
 import (
+	"github.com/mkolibaba/metrics/internal/config"
 	"github.com/mkolibaba/metrics/internal/http/router"
 	"github.com/mkolibaba/metrics/internal/storage/inmemory"
 	"log"
@@ -8,11 +9,13 @@ import (
 )
 
 func Run() {
-	store := inmemory.NewMemStorage()
+	serverAddress := config.LoadServerConfig().ServerAddress
 
+	store := inmemory.NewMemStorage()
 	r := router.New(store)
 
-	if err := http.ListenAndServe(":8080", r); err != nil {
+	log.Printf("Running server on %s", serverAddress)
+	if err := http.ListenAndServe(serverAddress, r); err != nil {
 		log.Fatal(err)
 	}
 }

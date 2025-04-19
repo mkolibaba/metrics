@@ -3,11 +3,12 @@ package collector
 import (
 	"github.com/stretchr/testify/assert"
 	"testing"
+	"time"
 )
 
 func TestCollect(t *testing.T) {
 	t.Run("Should collect metrics", func(t *testing.T) {
-		collector := NewMetricsCollector()
+		collector := NewMetricsCollector(1 * time.Second)
 
 		collector.collect()
 
@@ -17,7 +18,7 @@ func TestCollect(t *testing.T) {
 		assert.Contains(t, collector.Counters, "PollCount")
 	})
 	t.Run("Should increment iterations", func(t *testing.T) {
-		collector := NewMetricsCollector()
+		collector := NewMetricsCollector(1 * time.Second)
 
 		collector.collect()
 		collector.collect()

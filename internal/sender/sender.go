@@ -7,22 +7,21 @@ import (
 	"time"
 )
 
-const reportInterval = 10 * time.Second
-
 type MetricsSender struct {
-	collector *collector.MetricsCollector
-	serverAPI client.ServerAPI
+	collector      *collector.MetricsCollector
+	serverAPI      client.ServerAPI
+	reportInterval time.Duration
 }
 
-func NewMetricsSender(collector *collector.MetricsCollector, serverAPI client.ServerAPI) *MetricsSender {
-	return &MetricsSender{collector, serverAPI}
+func NewMetricsSender(collector *collector.MetricsCollector, serverAPI client.ServerAPI, reportInterval time.Duration) *MetricsSender {
+	return &MetricsSender{collector, serverAPI, reportInterval}
 }
 
 func (m *MetricsSender) StartCollectAndSend() {
 	m.collector.StartCollect()
 	go func() {
 		for {
-			time.Sleep(reportInterval)
+			time.Sleep(m.reportInterval)
 			m.send()
 		}
 	}()

@@ -6,18 +6,18 @@ import (
 	"time"
 )
 
-const pollInterval = 2 * time.Second
-
 type MetricsCollector struct {
-	Gauges     map[string]float64
-	Counters   map[string]int64
-	iterations int
+	Gauges       map[string]float64
+	Counters     map[string]int64
+	iterations   int
+	pollInterval time.Duration
 }
 
-func NewMetricsCollector() *MetricsCollector {
+func NewMetricsCollector(pollInterval time.Duration) *MetricsCollector {
 	return &MetricsCollector{
-		Gauges:   make(map[string]float64),
-		Counters: make(map[string]int64),
+		Gauges:       make(map[string]float64),
+		Counters:     make(map[string]int64),
+		pollInterval: pollInterval,
 	}
 }
 
@@ -25,7 +25,7 @@ func (m *MetricsCollector) StartCollect() {
 	go func() {
 		for {
 			m.collect()
-			time.Sleep(pollInterval)
+			time.Sleep(m.pollInterval)
 		}
 	}()
 }

@@ -4,6 +4,7 @@ import (
 	"github.com/mkolibaba/metrics/internal/collector"
 	"github.com/stretchr/testify/assert"
 	"testing"
+	"time"
 )
 
 type SpyServerAPI struct {
@@ -22,9 +23,9 @@ func (s *SpyServerAPI) UpdateGauge(name string, value float64) error {
 }
 
 func TestSend(t *testing.T) {
-	c := collector.NewMetricsCollector()
+	c := collector.NewMetricsCollector(1 * time.Second)
 	serverAPI := &SpyServerAPI{}
-	sender := NewMetricsSender(c, serverAPI)
+	sender := NewMetricsSender(c, serverAPI, 1*time.Second)
 
 	c.Gauges["gauge1"] = 1.2
 	c.Counters["counter1"] = 2
