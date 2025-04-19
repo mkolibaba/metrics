@@ -1,7 +1,7 @@
 package main
 
-import "github.com/mkolibaba/metrics/internal/app/agent"
+import "github.com/mkolibaba/metrics/internal/agent/app"
 
 func main() {
-	agent.Run()
+	app.Run()
 }

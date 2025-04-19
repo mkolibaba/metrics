@@ -1,6 +1,6 @@
 package inmemory
 
-import "github.com/mkolibaba/metrics/internal/storage"
+import "github.com/mkolibaba/metrics/internal/server/storage"
 
 type MemStorage struct {
 	gauges   map[string]float64

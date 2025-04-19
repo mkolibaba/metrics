@@ -1,7 +1,7 @@
 package sender
 
 import (
-	"github.com/mkolibaba/metrics/internal/collector"
+	"github.com/mkolibaba/metrics/internal/agent/collector"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"

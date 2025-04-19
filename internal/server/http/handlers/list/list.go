@@ -2,7 +2,7 @@ package list
 
 import (
 	"fmt"
-	"github.com/mkolibaba/metrics/internal/storage"
+	"github.com/mkolibaba/metrics/internal/server/storage"
 	"io"
 	"net/http"
 	"strings"

@@ -2,7 +2,7 @@ package update
 
 import (
 	"github.com/go-chi/chi/v5"
-	"github.com/mkolibaba/metrics/internal/storage"
+	"github.com/mkolibaba/metrics/internal/server/storage"
 	"net/http"
 	"strconv"
 )

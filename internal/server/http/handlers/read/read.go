@@ -3,7 +3,7 @@ package read
 import (
 	"errors"
 	"github.com/go-chi/chi/v5"
-	"github.com/mkolibaba/metrics/internal/storage"
+	"github.com/mkolibaba/metrics/internal/server/storage"
 	"io"
 	"net/http"
 	"strconv"

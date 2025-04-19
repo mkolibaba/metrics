@@ -2,9 +2,9 @@ package read_test
 
 import (
 	"github.com/go-resty/resty/v2"
-	"github.com/mkolibaba/metrics/internal/http/router"
-	"github.com/mkolibaba/metrics/internal/storage"
-	"github.com/mkolibaba/metrics/internal/storage/inmemory"
+	"github.com/mkolibaba/metrics/internal/server/http/router"
+	"github.com/mkolibaba/metrics/internal/server/storage"
+	"github.com/mkolibaba/metrics/internal/server/storage/inmemory"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"net/http"

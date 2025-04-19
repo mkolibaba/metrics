@@ -1,7 +1,7 @@
 package main
 
-import "github.com/mkolibaba/metrics/internal/app/server"
+import "github.com/mkolibaba/metrics/internal/server/app"
 
 func main() {
-	server.Run()
+	app.Run()
 }

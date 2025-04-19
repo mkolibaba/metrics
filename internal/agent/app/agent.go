@@ -1,10 +1,10 @@
-package agent
+package app
 
 import (
-	"github.com/mkolibaba/metrics/internal/collector"
-	"github.com/mkolibaba/metrics/internal/config"
-	"github.com/mkolibaba/metrics/internal/http/client"
-	"github.com/mkolibaba/metrics/internal/sender"
+	"github.com/mkolibaba/metrics/internal/agent/collector"
+	"github.com/mkolibaba/metrics/internal/agent/config"
+	"github.com/mkolibaba/metrics/internal/agent/http/client"
+	"github.com/mkolibaba/metrics/internal/agent/sender"
 	"log"
 )
 

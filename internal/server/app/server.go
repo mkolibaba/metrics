@@ -1,9 +1,9 @@
-package server
+package app
 
 import (
-	"github.com/mkolibaba/metrics/internal/config"
-	"github.com/mkolibaba/metrics/internal/http/router"
-	"github.com/mkolibaba/metrics/internal/storage/inmemory"
+	"github.com/mkolibaba/metrics/internal/server/config"
+	"github.com/mkolibaba/metrics/internal/server/http/router"
+	"github.com/mkolibaba/metrics/internal/server/storage/inmemory"
 	"log"
 	"net/http"
 )

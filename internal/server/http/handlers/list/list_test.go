@@ -1,10 +1,11 @@
 package list
 
 import (
-	"github.com/mkolibaba/metrics/internal/http/testutils"
-	"github.com/mkolibaba/metrics/internal/storage"
-	"github.com/mkolibaba/metrics/internal/storage/inmemory"
+	"github.com/mkolibaba/metrics/internal/server/storage"
+	"github.com/mkolibaba/metrics/internal/server/storage/inmemory"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -17,7 +18,7 @@ func TestList(t *testing.T) {
 		defer response.Body.Close()
 
 		assert.Equal(t, 200, response.StatusCode)
-		assert.Empty(t, testutils.ReadAndCloseResponseBody(t, response))
+		assert.Empty(t, readAndCloseResponseBody(t, response))
 	})
 	t.Run("Should return list of metrics", func(t *testing.T) {
 		store := inmemory.NewMemStorage()
@@ -28,7 +29,7 @@ func TestList(t *testing.T) {
 		defer response.Body.Close()
 
 		want := "gauge1: 34.560\ncounter1: 12"
-		got := testutils.ReadAndCloseResponseBody(t, response)
+		got := readAndCloseResponseBody(t, response)
 
 		assert.Equal(t, want, got)
 		assert.Contains(t, response.Header.Get("Content-Type"), "text/plain")
@@ -43,4 +44,15 @@ func sendRequest(store storage.MetricsStorage) *http.Response {
 	handler(recorder, request)
 
 	return recorder.Result()
+}
+
+func readAndCloseResponseBody(t *testing.T, response *http.Response) string {
+	if response.Body == nil {
+		return ""
+	}
+
+	defer response.Body.Close()
+	body, err := io.ReadAll(response.Body)
+	require.NoError(t, err)
+	return string(body)
 }

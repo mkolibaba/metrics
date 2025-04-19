@@ -1,8 +1,8 @@
 package sender
 
 import (
-	"github.com/mkolibaba/metrics/internal/collector"
-	"github.com/mkolibaba/metrics/internal/http/client"
+	"github.com/mkolibaba/metrics/internal/agent/collector"
+	"github.com/mkolibaba/metrics/internal/agent/http/client"
 	"log"
 	"time"
 )
