@@ -51,7 +51,7 @@ func LoadAgentConfig() *AgentConfig {
 		cfg.PollInterval = time.Duration(i) * time.Second
 	} else {
 		cfg.PollInterval = 2 * time.Second
-		flag.Func("r", "poll interval (seconds)", func(s string) error {
+		flag.Func("p", "poll interval (seconds)", func(s string) error {
 			i, err := strconv.Atoi(s)
 			if err != nil {
 				return err
