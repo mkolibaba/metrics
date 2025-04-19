@@ -14,9 +14,11 @@ type AgentConfig struct {
 func LoadAgentConfig() *AgentConfig {
 	cfg := &AgentConfig{}
 	flag.StringVar(&cfg.ServerAddress, "a", "localhost:8080", "server address")
-	flag.DurationVar(&cfg.ReportInterval, "r", 10*time.Second, "report interval")
-	flag.DurationVar(&cfg.PollInterval, "p", 2*time.Second, "poll interval")
+	reportIntervalSeconds := flag.Int("r", 10, "report interval (seconds)")
+	pollIntervalSeconds := flag.Int("p", 2, "poll interval (seconds)")
 	flag.Parse()
+	cfg.ReportInterval = time.Duration(*reportIntervalSeconds) * time.Second
+	cfg.PollInterval = time.Duration(*pollIntervalSeconds) * time.Second
 	return cfg
 }
 

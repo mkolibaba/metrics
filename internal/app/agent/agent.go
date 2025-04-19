@@ -13,7 +13,7 @@ func Run() {
 	c := collector.NewMetricsCollector(cfg.PollInterval)
 	serverAPI := client.New(cfg.ServerAddress)
 
-	metricsSender := sender.NewMetricsSender(c, serverAPI, cfg.PollInterval)
+	metricsSender := sender.NewMetricsSender(c, serverAPI, cfg.ReportInterval)
 	metricsSender.StartCollectAndSend()
 
 	select {}
