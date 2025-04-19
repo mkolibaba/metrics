@@ -1,0 +1,42 @@
+### 1. Принимает метрики по протоколу HTTP методом POST
+< {%
+    request.variables.set("cases", [
+        {"type": "counter", "value": 12},
+        {"type": "gauge", "value": 0.25},
+    ])
+%}
+POST localhost:8080/update/{{$.cases..type}}/mymetric/{{$.cases..value}}
+
+> {%
+    client.test("Response.status = 200", function () {
+        client.assert(response.status === 200, `want 200, got ${response.status}`);
+    });
+%}
+
+
+### 2. При попытке передать запрос без имени метрики возвращает http.StatusNotFound
+POST localhost:8080/update/counter/123
+
+> {%
+    client.test("Response.status = 404", function () {
+        client.assert(response.status === 404, `want 404, got ${response.status}`);
+    });
+%}
+
+
+### 3. При попытке передать запрос с некорректным типом метрики или значением возвращает http.StatusBadRequest
+< {%
+    request.variables.set("cases", [
+        {"type": "counter", "value": "blabla"},
+        {"type": "counter", "value": 1.2},
+        {"type": "counter", "value": 9999999999999999999999999999999999999999999999999999999999},
+        {"type": "gauge", "value": "blabla"},
+    ])
+%}
+POST localhost:8080/update/{{$.cases..type}}/mymetric/{{$.cases..value}}
+
+> {%
+    client.test("Response.status = 400", function () {
+        client.assert(response.status === 400, `want 400, got ${response.status}`);
+    });
+%}
