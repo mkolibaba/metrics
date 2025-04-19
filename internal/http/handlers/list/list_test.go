@@ -14,6 +14,7 @@ func TestList(t *testing.T) {
 	t.Run("Should process empty store", func(t *testing.T) {
 		store := inmemory.NewMemStorage()
 		response := sendRequest(store)
+		defer response.Body.Close()
 
 		assert.Equal(t, 200, response.StatusCode)
 		assert.Empty(t, testutils.ReadAndCloseResponseBody(t, response))
@@ -24,6 +25,7 @@ func TestList(t *testing.T) {
 		store.UpdateGauge("gauge1", 34.56)
 
 		response := sendRequest(store)
+		defer response.Body.Close()
 
 		want := "gauge1: 34.5600\ncounter1: 12"
 		got := testutils.ReadAndCloseResponseBody(t, response)

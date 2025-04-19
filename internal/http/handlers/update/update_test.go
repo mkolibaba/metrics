@@ -19,19 +19,19 @@ type SpyMetricsStorage struct {
 	countersValuesPassed []int64
 }
 
-func (s *SpyMetricsStorage) GetGauges() map[string]float64 {
+func (m *SpyMetricsStorage) GetGauges() map[string]float64 {
 	return nil // TODO: реализовать при необходимости
 }
 
-func (s *SpyMetricsStorage) GetCounters() map[string]int64 {
+func (m *SpyMetricsStorage) GetCounters() map[string]int64 {
 	return nil // TODO: реализовать при необходимости
 }
 
-func (s *SpyMetricsStorage) GetGauge(name string) (float64, error) {
+func (m *SpyMetricsStorage) GetGauge(name string) (float64, error) {
 	return 0, nil // TODO: реализовать при необходимости
 }
 
-func (s *SpyMetricsStorage) GetCounter(name string) (int64, error) {
+func (m *SpyMetricsStorage) GetCounter(name string) (int64, error) {
 	return 0, nil // TODO: реализовать при необходимости
 }
 
