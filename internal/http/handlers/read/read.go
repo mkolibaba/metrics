@@ -28,7 +28,7 @@ func New(store storage.MetricsStorage) http.HandlerFunc {
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}
-			io.WriteString(w, strconv.FormatFloat(gauge, 'f', 3, 64))
+			io.WriteString(w, strconv.FormatFloat(gauge, 'f', -1, 64))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}

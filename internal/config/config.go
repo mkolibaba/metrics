@@ -2,6 +2,8 @@ package config
 
 import (
 	"flag"
+	"os"
+	"strconv"
 	"time"
 )
 
@@ -13,12 +15,54 @@ type AgentConfig struct {
 
 func LoadAgentConfig() *AgentConfig {
 	cfg := &AgentConfig{}
-	flag.StringVar(&cfg.ServerAddress, "a", "localhost:8080", "server address")
-	reportIntervalSeconds := flag.Int("r", 10, "report interval (seconds)")
-	pollIntervalSeconds := flag.Int("p", 2, "poll interval (seconds)")
+
+	address, ok := os.LookupEnv("ADDRESS")
+	if ok {
+		cfg.ServerAddress = address
+	} else {
+		flag.StringVar(&cfg.ServerAddress, "a", "localhost:8080", "server address")
+	}
+
+	reportInterval, ok := os.LookupEnv("REPORT_INTERVAL")
+	if ok {
+		i, err := strconv.Atoi(reportInterval)
+		if err != nil {
+			panic(err)
+		}
+		cfg.ReportInterval = time.Duration(i) * time.Second
+	} else {
+		cfg.ReportInterval = 10 * time.Second
+		flag.Func("r", "report interval (seconds)", func(s string) error {
+			i, err := strconv.Atoi(s)
+			if err != nil {
+				return err
+			}
+			cfg.ReportInterval = time.Duration(i) * time.Second
+			return nil
+		})
+	}
+
+	pollInterval, ok := os.LookupEnv("POLL_INTERVAL")
+	if ok {
+		i, err := strconv.Atoi(pollInterval)
+		if err != nil {
+			panic(err)
+		}
+		cfg.PollInterval = time.Duration(i) * time.Second
+	} else {
+		cfg.PollInterval = 2 * time.Second
+		flag.Func("r", "poll interval (seconds)", func(s string) error {
+			i, err := strconv.Atoi(s)
+			if err != nil {
+				return err
+			}
+			cfg.PollInterval = time.Duration(i) * time.Second
+			return nil
+		})
+	}
+
 	flag.Parse()
-	cfg.ReportInterval = time.Duration(*reportIntervalSeconds) * time.Second
-	cfg.PollInterval = time.Duration(*pollIntervalSeconds) * time.Second
+
 	return cfg
 }
 
@@ -28,7 +72,12 @@ type ServerConfig struct {
 
 func LoadServerConfig() *ServerConfig {
 	cfg := &ServerConfig{}
-	flag.StringVar(&cfg.ServerAddress, "a", "localhost:8080", "server address")
+	address, ok := os.LookupEnv("ADDRESS")
+	if ok {
+		cfg.ServerAddress = address
+	} else {
+		flag.StringVar(&cfg.ServerAddress, "a", "localhost:8080", "server address")
+	}
 	flag.Parse()
 	return cfg
 }

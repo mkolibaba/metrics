@@ -12,6 +12,6 @@ echo "Done"
 
 cd ../..
 echo "Running tests"
-metricstest '-test.v' '-test.run=^TestIteration4$' '-binary-path=cmd\server\server.exe' '-agent-binary-path=cmd\agent\agent.exe' '-server-port=8094' '-source-path=.'
+metricstest '-test.v' '-test.run=^TestIteration5$' '-binary-path=cmd\server\server.exe' '-agent-binary-path=cmd\agent\agent.exe' '-server-port=15243' '-source-path=.'
 
 cd $PSScriptRoot
