@@ -17,7 +17,7 @@ func (s *ServerClient) UpdateCounter(name string, value int64) error {
 }
 
 func (s *ServerClient) UpdateGauge(name string, value float64) error {
-	return sendMetric("gauge", name, strconv.FormatFloat(value, 'f', 4, 64))
+	return sendMetric("gauge", name, strconv.FormatFloat(value, 'f', 3, 64))
 }
 
 func sendMetric(t, name, val string) error {

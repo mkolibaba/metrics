@@ -12,7 +12,7 @@ func New(store storage.MetricsStorage) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var metrics []string
 		for k, v := range store.GetGauges() {
-			metrics = append(metrics, fmt.Sprintf("%s: %.4f", k, v))
+			metrics = append(metrics, fmt.Sprintf("%s: %.3f", k, v))
 		}
 		for k, v := range store.GetCounters() {
 			metrics = append(metrics, fmt.Sprintf("%s: %d", k, v))
