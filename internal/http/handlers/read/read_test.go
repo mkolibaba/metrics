@@ -30,7 +30,7 @@ func TestRead(t *testing.T) {
 
 		response := sendReadRequest(t, store, "/value/gauge/gauge1")
 
-		want := "34.5600"
+		want := "34.560"
 		got := string(response.Body())
 
 		assert.Equal(t, want, got)

@@ -27,7 +27,7 @@ func TestList(t *testing.T) {
 		response := sendRequest(store)
 		defer response.Body.Close()
 
-		want := "gauge1: 34.5600\ncounter1: 12"
+		want := "gauge1: 34.560\ncounter1: 12"
 		got := testutils.ReadAndCloseResponseBody(t, response)
 
 		assert.Equal(t, want, got)
