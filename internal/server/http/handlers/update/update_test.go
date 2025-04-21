@@ -5,47 +5,13 @@ import (
 	"github.com/go-resty/resty/v2"
 	"github.com/mkolibaba/metrics/internal/server/http/router"
 	"github.com/mkolibaba/metrics/internal/server/storage"
+	"github.com/mkolibaba/metrics/internal/server/storage/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 )
-
-type SpyMetricsStorage struct {
-	calls                int
-	namesPassed          []string
-	gaugesValuesPassed   []float64
-	countersValuesPassed []int64
-}
-
-func (m *SpyMetricsStorage) GetGauges() map[string]float64 {
-	return nil // TODO: реализовать при необходимости
-}
-
-func (m *SpyMetricsStorage) GetCounters() map[string]int64 {
-	return nil // TODO: реализовать при необходимости
-}
-
-func (m *SpyMetricsStorage) GetGauge(name string) (float64, error) {
-	return 0, nil // TODO: реализовать при необходимости
-}
-
-func (m *SpyMetricsStorage) GetCounter(name string) (int64, error) {
-	return 0, nil // TODO: реализовать при необходимости
-}
-
-func (m *SpyMetricsStorage) UpdateGauge(name string, value float64) {
-	m.calls++
-	m.namesPassed = append(m.namesPassed, name)
-	m.gaugesValuesPassed = append(m.gaugesValuesPassed, value)
-}
-
-func (m *SpyMetricsStorage) UpdateCounter(name string, value int64) {
-	m.calls++
-	m.namesPassed = append(m.namesPassed, name)
-	m.countersValuesPassed = append(m.countersValuesPassed, value)
-}
 
 func TestUpdateHandlerShouldReturnCorrectStatus(t *testing.T) {
 	cases := []struct {
@@ -87,7 +53,7 @@ func TestUpdateHandlerShouldReturnCorrectStatus(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(fmt.Sprintf("POST %s should return response with status %d", c.url, c.wantStatus), func(t *testing.T) {
-			store := &SpyMetricsStorage{}
+			store := &mocks.MetricsStorageMock{}
 			response := sendUpdateRequest(t, store, c.url)
 
 			assert.Equal(t, c.wantStatus, response.StatusCode())
@@ -97,28 +63,28 @@ func TestUpdateHandlerShouldReturnCorrectStatus(t *testing.T) {
 
 func TestUpdateHandlerCallsStoreCorrectly(t *testing.T) {
 	t.Run("Should call store exactly 1 time", func(t *testing.T) {
-		store := &SpyMetricsStorage{}
+		store := &mocks.MetricsStorageMock{}
 
 		sendUpdateRequest(t, store, "/update/counter/my/12")
 
-		assert.Equal(t, 1, store.calls)
-		assert.Equal(t, []string{"my"}, store.namesPassed)
-		assert.Equal(t, []int64{12}, store.countersValuesPassed)
-		assert.Empty(t, store.gaugesValuesPassed)
+		assert.Equal(t, 1, store.Calls)
+		assert.Equal(t, []string{"my"}, store.NamesPassed)
+		assert.Equal(t, []int64{12}, store.CountersValuesPassed)
+		assert.Empty(t, store.GaugesValuesPassed)
 	})
 	t.Run("Should call store exactly 2 times", func(t *testing.T) {
-		store := &SpyMetricsStorage{}
+		store := &mocks.MetricsStorageMock{}
 
 		sendUpdateRequest(t, store, "/update/counter/my/12")
 		sendUpdateRequest(t, store, "/update/counter/my/12")
 
-		assert.Equal(t, 2, store.calls)
-		assert.Equal(t, []string{"my", "my"}, store.namesPassed)
-		assert.Equal(t, []int64{12, 12}, store.countersValuesPassed)
-		assert.Empty(t, store.gaugesValuesPassed)
+		assert.Equal(t, 2, store.Calls)
+		assert.Equal(t, []string{"my", "my"}, store.NamesPassed)
+		assert.Equal(t, []int64{12, 12}, store.CountersValuesPassed)
+		assert.Empty(t, store.GaugesValuesPassed)
 	})
 	t.Run("Should correctly process all requests", func(t *testing.T) {
-		store := &SpyMetricsStorage{}
+		store := &mocks.MetricsStorageMock{}
 
 		sendUpdateRequest(t, store, "/update/counter/a/1")
 		sendUpdateRequest(t, store, "/update/counter/b/5")
@@ -126,21 +92,21 @@ func TestUpdateHandlerCallsStoreCorrectly(t *testing.T) {
 		sendUpdateRequest(t, store, "/update/gauge/e/4")
 		sendUpdateRequest(t, store, "/update/counter/c/2")
 
-		assert.Equal(t, 5, store.calls)
-		assert.Equal(t, []string{"a", "b", "d", "e", "c"}, store.namesPassed)
-		assert.Equal(t, []int64{1, 5, 2}, store.countersValuesPassed)
-		assert.Equal(t, []float64{3, 4}, store.gaugesValuesPassed)
+		assert.Equal(t, 5, store.Calls)
+		assert.Equal(t, []string{"a", "b", "d", "e", "c"}, store.NamesPassed)
+		assert.Equal(t, []int64{1, 5, 2}, store.CountersValuesPassed)
+		assert.Equal(t, []float64{3, 4}, store.GaugesValuesPassed)
 	})
 	t.Run("Should not call store when request is invalid", func(t *testing.T) {
-		store := &SpyMetricsStorage{}
+		store := &mocks.MetricsStorageMock{}
 
 		sendUpdateRequest(t, store, "/update/counter/abc/1.2")
 		sendUpdateRequest(t, store, "/update/gauge/abc/blabla")
 
-		assert.Empty(t, store.calls)
-		assert.Empty(t, store.namesPassed)
-		assert.Empty(t, store.countersValuesPassed)
-		assert.Empty(t, store.gaugesValuesPassed)
+		assert.Empty(t, store.Calls)
+		assert.Empty(t, store.NamesPassed)
+		assert.Empty(t, store.CountersValuesPassed)
+		assert.Empty(t, store.GaugesValuesPassed)
 	})
 }
 
