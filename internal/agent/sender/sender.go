@@ -19,6 +19,10 @@ func NewMetricsSender(collector *collector.MetricsCollector, serverAPI client.Se
 
 func (m *MetricsSender) StartCollectAndSend() {
 	m.collector.StartCollect()
+	m.StartSend()
+}
+
+func (m *MetricsSender) StartSend() {
 	go func() {
 		for {
 			time.Sleep(m.reportInterval)

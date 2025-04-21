@@ -25,38 +25,38 @@ func LoadAgentConfig() *AgentConfig {
 
 	reportInterval, ok := os.LookupEnv("REPORT_INTERVAL")
 	if ok {
-		i, err := strconv.Atoi(reportInterval)
+		duration, err := stringToDuration(reportInterval)
 		if err != nil {
 			panic(err)
 		}
-		cfg.ReportInterval = time.Duration(i) * time.Second
+		cfg.ReportInterval = duration
 	} else {
 		cfg.ReportInterval = 10 * time.Second
 		flag.Func("r", "report interval (seconds)", func(s string) error {
-			i, err := strconv.Atoi(s)
+			duration, err := stringToDuration(s)
 			if err != nil {
 				return err
 			}
-			cfg.ReportInterval = time.Duration(i) * time.Second
+			cfg.ReportInterval = duration
 			return nil
 		})
 	}
 
 	pollInterval, ok := os.LookupEnv("POLL_INTERVAL")
 	if ok {
-		i, err := strconv.Atoi(pollInterval)
+		duration, err := stringToDuration(pollInterval)
 		if err != nil {
 			panic(err)
 		}
-		cfg.PollInterval = time.Duration(i) * time.Second
+		cfg.PollInterval = duration
 	} else {
 		cfg.PollInterval = 2 * time.Second
 		flag.Func("p", "poll interval (seconds)", func(s string) error {
-			i, err := strconv.Atoi(s)
+			duration, err := stringToDuration(s)
 			if err != nil {
 				return err
 			}
-			cfg.PollInterval = time.Duration(i) * time.Second
+			cfg.PollInterval = duration
 			return nil
 		})
 	}
@@ -64,4 +64,12 @@ func LoadAgentConfig() *AgentConfig {
 	flag.Parse()
 
 	return cfg
+}
+
+func stringToDuration(s string) (time.Duration, error) {
+	i, err := strconv.Atoi(s)
+	if err != nil {
+		return 0, err
+	}
+	return time.Duration(i) * time.Second, nil
 }
