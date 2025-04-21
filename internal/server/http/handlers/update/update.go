@@ -2,14 +2,10 @@ package update
 
 import (
 	"github.com/go-chi/chi/v5"
+	"github.com/mkolibaba/metrics/internal/server/http/handlers"
 	"github.com/mkolibaba/metrics/internal/server/storage"
 	"net/http"
 	"strconv"
-)
-
-const (
-	MetricGauge   = "gauge"
-	MetricCounter = "counter"
 )
 
 func New(store storage.MetricsStorage) http.HandlerFunc {
@@ -19,14 +15,14 @@ func New(store storage.MetricsStorage) http.HandlerFunc {
 		val := chi.URLParam(r, "value")
 
 		switch t {
-		case MetricGauge:
+		case handlers.MetricGauge:
 			v, err := strconv.ParseFloat(val, 64)
 			if err == nil {
 				store.UpdateGauge(name, v)
 			} else {
 				w.WriteHeader(http.StatusBadRequest)
 			}
-		case MetricCounter:
+		case handlers.MetricCounter:
 			v, err := strconv.ParseInt(val, 10, 64)
 			if err == nil {
 				store.UpdateCounter(name, v)

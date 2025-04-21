@@ -3,6 +3,7 @@ package read
 import (
 	"errors"
 	"github.com/go-chi/chi/v5"
+	"github.com/mkolibaba/metrics/internal/server/http/handlers"
 	"github.com/mkolibaba/metrics/internal/server/storage"
 	"io"
 	"net/http"
@@ -15,14 +16,14 @@ func New(store storage.MetricsStorage) http.HandlerFunc {
 		name := chi.URLParam(r, "name")
 
 		switch t {
-		case "counter":
+		case handlers.MetricCounter:
 			counter, err := store.GetCounter(name)
 			if errors.Is(err, storage.ErrMetricNotFound) {
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}
 			io.WriteString(w, strconv.FormatInt(counter, 10))
-		case "gauge":
+		case handlers.MetricGauge:
 			gauge, err := store.GetGauge(name)
 			if errors.Is(err, storage.ErrMetricNotFound) {
 				w.WriteHeader(http.StatusNotFound)
