@@ -11,7 +11,7 @@ import (
 func Run() {
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 
-	cfg := config.LoadAgentConfig()
+	cfg := config.MustLoadAgentConfig()
 
 	c := collector.NewMetricsCollector(cfg.PollInterval)
 	serverAPI := client.New(cfg.ServerAddress)

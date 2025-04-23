@@ -11,7 +11,7 @@ import (
 func Run() {
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 
-	serverAddress := config.LoadServerConfig().ServerAddress
+	serverAddress := config.MustLoadServerConfig().ServerAddress
 
 	store := inmemory.NewMemStorage()
 	r := router.New(store)

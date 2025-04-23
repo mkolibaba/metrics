@@ -1,58 +1,56 @@
-package list
+package list_test
 
 import (
-	"github.com/mkolibaba/metrics/internal/server/storage"
+	"github.com/go-resty/resty/v2"
+	"github.com/mkolibaba/metrics/internal/server/http/router"
 	"github.com/mkolibaba/metrics/internal/server/storage/inmemory"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"io"
+	"github.com/mkolibaba/metrics/internal/server/testutils"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
 func TestList(t *testing.T) {
-	t.Run("Should process empty store", func(t *testing.T) {
+	t.Run("Should_process_empty_store", func(t *testing.T) {
 		store := inmemory.NewMemStorage()
-		response := sendRequest(store)
-		defer response.Body.Close()
+		response := sendRequest(t, store)
 
-		assert.Equal(t, 200, response.StatusCode)
-		assert.Empty(t, readAndCloseResponseBody(t, response))
+		testutils.AssertResponseStatusCode(t, 200, response)
+		testutils.AssertResponseBody(t, "", response)
 	})
-	t.Run("Should return list of metrics", func(t *testing.T) {
+	t.Run("Should_return_list_of_metrics", func(t *testing.T) {
 		store := inmemory.NewMemStorage()
 		store.UpdateCounter("counter1", 12)
 		store.UpdateGauge("gauge1", 34.56)
 
-		response := sendRequest(store)
-		defer response.Body.Close()
+		response := sendRequest(t, store)
 
 		want := "gauge1: 34.560\ncounter1: 12"
-		got := readAndCloseResponseBody(t, response)
 
-		assert.Equal(t, want, got)
-		assert.Contains(t, response.Header.Get("Content-Type"), "text/plain")
+		testutils.AssertResponseBody(t, want, response)
+
+		wantContentType := "text/plain"
+		gotContentType := response.Header().Get("Content-Type")
+
+		if !strings.Contains(gotContentType, wantContentType) {
+			t.Errorf("did not get correct response Content-Type: want '%s' got '%s'", wantContentType, gotContentType)
+		}
 	})
 }
 
-func sendRequest(store storage.MetricsStorage) *http.Response {
-	request := httptest.NewRequest(http.MethodGet, "/", http.NoBody)
-	recorder := httptest.NewRecorder()
+func sendRequest(t *testing.T, store router.MetricsStorage) *resty.Response {
+	t.Helper()
 
-	handler := New(store)
-	handler(recorder, request)
+	srv := httptest.NewServer(router.New(store))
+	defer srv.Close()
 
-	return recorder.Result()
-}
+	request := resty.New().R()
+	request.Method = http.MethodGet
+	request.URL = srv.URL + "/"
 
-func readAndCloseResponseBody(t *testing.T, response *http.Response) string {
-	if response.Body == nil {
-		return ""
-	}
+	response, err := request.Send()
+	testutils.AssertNoError(t, err)
 
-	defer response.Body.Close()
-	body, err := io.ReadAll(response.Body)
-	require.NoError(t, err)
-	return string(body)
+	return response
 }

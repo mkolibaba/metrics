@@ -9,7 +9,7 @@ type ServerConfig struct {
 	ServerAddress string
 }
 
-func LoadServerConfig() *ServerConfig {
+func MustLoadServerConfig() *ServerConfig {
 	cfg := &ServerConfig{}
 	address, ok := os.LookupEnv("ADDRESS")
 	if ok {

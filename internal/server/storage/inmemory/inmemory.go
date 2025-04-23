@@ -17,20 +17,18 @@ func (m *MemStorage) GetCounters() map[string]int64 {
 
 func (m *MemStorage) GetGauge(name string) (float64, error) {
 	v, ok := m.gauges[name]
-	if ok {
-		return v, nil
-	} else {
+	if !ok {
 		return 0, storage.ErrMetricNotFound
 	}
+	return v, nil
 }
 
 func (m *MemStorage) GetCounter(name string) (int64, error) {
 	v, ok := m.counters[name]
-	if ok {
-		return v, nil
-	} else {
+	if !ok {
 		return 0, storage.ErrMetricNotFound
 	}
+	return v, nil
 }
 
 func (m *MemStorage) UpdateGauge(name string, value float64) {

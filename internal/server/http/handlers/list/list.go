@@ -2,25 +2,33 @@ package list
 
 import (
 	"fmt"
-	"github.com/mkolibaba/metrics/internal/server/storage"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 )
 
-func New(store storage.MetricsStorage) http.HandlerFunc {
+type AllMetricsGetter interface {
+	GetGauges() map[string]float64
+	GetCounters() map[string]int64
+}
+
+func New(getter AllMetricsGetter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var metrics []string
-		for k, v := range store.GetGauges() {
-			metrics = append(metrics, fmt.Sprintf("%s: %.3f", k, v))
+		metrics := make([]string, len(getter.GetGauges())+len(getter.GetCounters()))
+		var i int
+		for k, v := range getter.GetGauges() {
+			metrics[i] = fmt.Sprintf("%s: %.3f", k, v)
+			i++
 		}
-		for k, v := range store.GetCounters() {
-			metrics = append(metrics, fmt.Sprintf("%s: %d", k, v))
+		for k, v := range getter.GetCounters() {
+			metrics[i] = fmt.Sprintf("%s: %d", k, v)
+			i++
 		}
 		_, err := io.WriteString(w, strings.Join(metrics, "\n"))
 		if err != nil {
-			// никак такую ошибку не обработаем
-			panic(err)
+			log.Printf("error during processing metrics list request: %v", err)
+			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}
 }

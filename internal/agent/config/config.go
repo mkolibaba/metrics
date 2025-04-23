@@ -2,6 +2,7 @@ package config
 
 import (
 	"flag"
+	"log"
 	"os"
 	"strconv"
 	"time"
@@ -13,7 +14,7 @@ type AgentConfig struct {
 	PollInterval   time.Duration
 }
 
-func LoadAgentConfig() *AgentConfig {
+func MustLoadAgentConfig() *AgentConfig {
 	cfg := &AgentConfig{}
 
 	address, ok := os.LookupEnv("ADDRESS")
@@ -27,7 +28,7 @@ func LoadAgentConfig() *AgentConfig {
 	if ok {
 		duration, err := stringToDuration(reportInterval)
 		if err != nil {
-			panic(err)
+			log.Fatalf("error parsing config value: %v", err)
 		}
 		cfg.ReportInterval = duration
 	} else {
@@ -46,7 +47,7 @@ func LoadAgentConfig() *AgentConfig {
 	if ok {
 		duration, err := stringToDuration(pollInterval)
 		if err != nil {
-			panic(err)
+			log.Fatalf("error parsing config value: %v", err)
 		}
 		cfg.PollInterval = duration
 	} else {

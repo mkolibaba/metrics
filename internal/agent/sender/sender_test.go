@@ -1,24 +1,35 @@
 package sender
 
 import (
-	"github.com/mkolibaba/metrics/internal/agent/collector"
+	cmocks "github.com/mkolibaba/metrics/internal/agent/collector/mocks"
 	"github.com/mkolibaba/metrics/internal/agent/http/client/mocks"
-	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
 )
 
 func TestSend(t *testing.T) {
-	c := collector.NewMetricsCollector(1 * time.Second)
+	c := &cmocks.CollectorMock{
+		Gauges: map[string]float64{
+			"gauge1": 1.2,
+		},
+		Counters: map[string]int64{
+			"counter1": 2,
+			"counter2": 3,
+		},
+	}
 	serverAPI := &mocks.ServerAPIMock{}
 	sender := NewMetricsSender(c, serverAPI, 1*time.Second)
 
-	c.Gauges["gauge1"] = 1.2
-	c.Counters["counter1"] = 2
-	c.Counters["counter2"] = 3
-
 	sender.send()
 
-	assert.Equal(t, 2, serverAPI.CounterCalls)
-	assert.Equal(t, 1, serverAPI.GaugeCalls)
+	want := 2
+	got := serverAPI.CounterCalls
+	if got != want {
+		t.Errorf("want %d counter calls, got %d", want, got)
+	}
+	want = 1
+	got = serverAPI.GaugeCalls
+	if got != want {
+		t.Errorf("want %d gauge calls, got %d", want, got)
+	}
 }

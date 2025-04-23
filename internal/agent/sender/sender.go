@@ -1,19 +1,28 @@
 package sender
 
 import (
-	"github.com/mkolibaba/metrics/internal/agent/collector"
-	"github.com/mkolibaba/metrics/internal/agent/http/client"
 	"log"
 	"time"
 )
 
+type Collector interface {
+	StartCollect()
+	GetGauges() map[string]float64
+	GetCounters() map[string]int64
+}
+
+type ServerAPI interface {
+	UpdateCounter(name string, value int64) error
+	UpdateGauge(name string, value float64) error
+}
+
 type MetricsSender struct {
-	collector      *collector.MetricsCollector
-	serverAPI      client.ServerAPI
+	collector      Collector
+	serverAPI      ServerAPI
 	reportInterval time.Duration
 }
 
-func NewMetricsSender(collector *collector.MetricsCollector, serverAPI client.ServerAPI, reportInterval time.Duration) *MetricsSender {
+func NewMetricsSender(collector Collector, serverAPI ServerAPI, reportInterval time.Duration) *MetricsSender {
 	return &MetricsSender{collector, serverAPI, reportInterval}
 }
 
@@ -32,13 +41,13 @@ func (m *MetricsSender) StartSend() {
 }
 
 func (m *MetricsSender) send() {
-	for k, v := range m.collector.Gauges {
+	for k, v := range m.collector.GetGauges() {
 		err := m.serverAPI.UpdateGauge(k, v)
 		if err != nil {
 			log.Print(err)
 		}
 	}
-	for k, v := range m.collector.Counters {
+	for k, v := range m.collector.GetCounters() {
 		err := m.serverAPI.UpdateCounter(k, v)
 		if err != nil {
 			log.Print(err)
