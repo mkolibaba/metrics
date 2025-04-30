@@ -16,61 +16,33 @@ type AgentConfig struct {
 
 func MustLoadAgentConfig() *AgentConfig {
 	cfg := &AgentConfig{}
+	var reportIntervalString, pollIntervalString string
 
-	address, ok := os.LookupEnv("ADDRESS")
-	if ok {
-		cfg.ServerAddress = address
-	} else {
-		flag.StringVar(&cfg.ServerAddress, "a", "localhost:8080", "server address")
-	}
-
-	reportInterval, ok := os.LookupEnv("REPORT_INTERVAL")
-	if ok {
-		duration, err := stringToDuration(reportInterval)
-		if err != nil {
-			log.Fatalf("error parsing config value: %v", err)
-		}
-		cfg.ReportInterval = duration
-	} else {
-		cfg.ReportInterval = 10 * time.Second
-		flag.Func("r", "report interval (seconds)", func(s string) error {
-			duration, err := stringToDuration(s)
-			if err != nil {
-				return err
-			}
-			cfg.ReportInterval = duration
-			return nil
-		})
-	}
-
-	pollInterval, ok := os.LookupEnv("POLL_INTERVAL")
-	if ok {
-		duration, err := stringToDuration(pollInterval)
-		if err != nil {
-			log.Fatalf("error parsing config value: %v", err)
-		}
-		cfg.PollInterval = duration
-	} else {
-		cfg.PollInterval = 2 * time.Second
-		flag.Func("p", "poll interval (seconds)", func(s string) error {
-			duration, err := stringToDuration(s)
-			if err != nil {
-				return err
-			}
-			cfg.PollInterval = duration
-			return nil
-		})
-	}
-
+	flag.StringVar(&cfg.ServerAddress, "a", "localhost:8080", "server address")
+	flag.StringVar(&reportIntervalString, "r", "10", "report interval (seconds)")
+	flag.StringVar(&pollIntervalString, "p", "2", "poll interval (seconds)")
 	flag.Parse()
+
+	if address, ok := os.LookupEnv("ADDRESS"); ok {
+		cfg.ServerAddress = address
+	}
+	if reportInterval, ok := os.LookupEnv("REPORT_INTERVAL"); ok {
+		reportIntervalString = reportInterval
+	}
+	if pollInterval, ok := os.LookupEnv("POLL_INTERVAL"); ok {
+		pollIntervalString = pollInterval
+	}
+
+	cfg.ReportInterval = stringToDuration(reportIntervalString)
+	cfg.PollInterval = stringToDuration(pollIntervalString)
 
 	return cfg
 }
 
-func stringToDuration(s string) (time.Duration, error) {
+func stringToDuration(s string) time.Duration {
 	i, err := strconv.Atoi(s)
 	if err != nil {
-		return 0, err
+		log.Fatalf("error parsing config value: %v", err)
 	}
-	return time.Duration(i) * time.Second, nil
+	return time.Duration(i) * time.Second
 }
