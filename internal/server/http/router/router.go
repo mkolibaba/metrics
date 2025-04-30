@@ -5,6 +5,7 @@ import (
 	"github.com/mkolibaba/metrics/internal/server/http/handlers/list"
 	"github.com/mkolibaba/metrics/internal/server/http/handlers/read"
 	"github.com/mkolibaba/metrics/internal/server/http/handlers/update"
+	"github.com/mkolibaba/metrics/internal/server/http/middleware"
 )
 
 type MetricsStorage interface {
@@ -15,6 +16,8 @@ type MetricsStorage interface {
 
 func New(store MetricsStorage) chi.Router {
 	r := chi.NewRouter()
+
+	r.Use(middleware.Logger)
 
 	r.Get("/", list.New(store))
 	r.Get("/value/{type}/{name}", read.New(store))
