@@ -8,7 +8,6 @@ import (
 	"github.com/mkolibaba/metrics/internal/server/testutils"
 	"net/http"
 	"net/http/httptest"
-	"slices"
 	"testing"
 )
 
@@ -68,20 +67,11 @@ func TestUpdateHandlerCallsStoreCorrectly(t *testing.T) {
 		countersValuesPassed []int64
 	}
 
-	assertState := func(t *testing.T, got *mocks.MetricsStorageMock, want want) {
-		t.Helper()
-		if got.Calls != want.calls {
-			t.Errorf("want store to be called exactly %d times, got %d", want.calls, got.Calls)
-		}
-		if !slices.Equal(got.NamesPassed, want.namesPassed) {
-			t.Errorf("want store to be called with names %v, got %v", want.calls, got.Calls)
-		}
-		if !slices.Equal(got.GaugesValuesPassed, want.gaugesValuesPassed) {
-			t.Errorf("want store to be called with gauges values %v, got %v", want.gaugesValuesPassed, got.GaugesValuesPassed)
-		}
-		if !slices.Equal(got.CountersValuesPassed, want.countersValuesPassed) {
-			t.Errorf("want store to be called with counters values %v, got %v", want.countersValuesPassed, got.CountersValuesPassed)
-		}
+	assertState := func(t *testing.T, store *mocks.MetricsStorageMock, want want) {
+		store.AssertCalled(t, want.calls)
+		store.AssertNames(t, want.namesPassed)
+		store.AssertGaugesValues(t, want.gaugesValuesPassed)
+		store.AssertCountersValues(t, want.countersValuesPassed)
 	}
 
 	t.Run("Should_call_store_exactly_1_time", func(t *testing.T) {

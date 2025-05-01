@@ -2,7 +2,7 @@ package client
 
 import (
 	"github.com/go-resty/resty/v2"
-	"strconv"
+	"github.com/mkolibaba/metrics/internal/common/http/model"
 )
 
 type ServerClient struct {
@@ -14,20 +14,25 @@ func New(serverAddress string) *ServerClient {
 }
 
 func (s *ServerClient) UpdateCounter(name string, value int64) error {
-	return s.sendMetric("counter", name, strconv.FormatInt(value, 10))
+	return s.sendMetric(&model.Metrics{
+		ID:    name,
+		MType: "counter",
+		Delta: &value,
+	})
 }
 
 func (s *ServerClient) UpdateGauge(name string, value float64) error {
-	return s.sendMetric("gauge", name, strconv.FormatFloat(value, 'f', 3, 64))
+	return s.sendMetric(&model.Metrics{
+		ID:    name,
+		MType: "gauge",
+		Value: &value,
+	})
 }
 
-func (s *ServerClient) sendMetric(t, name, val string) error {
+func (s *ServerClient) sendMetric(body *model.Metrics) error {
 	_, err := resty.New().R().
-		SetPathParams(map[string]string{
-			"t":    t,
-			"name": name,
-			"val":  val,
-		}).
-		Post("http://" + s.serverAddress + "/update/{t}/{name}/{val}")
+		SetHeader("Content-Type", "application/json").
+		SetBody(body).
+		Post("http://" + s.serverAddress + "/update")
 	return err
 }

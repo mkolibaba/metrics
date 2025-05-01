@@ -31,7 +31,7 @@ func (r *loggingResponseWriter) WriteHeader(statusCode int) {
 
 func Logger(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writerWrapper := loggingResponseWriter{w, &responseData{}}
+		writerWrapper := loggingResponseWriter{w, &responseData{status: 200}}
 
 		start := time.Now()
 		h.ServeHTTP(&writerWrapper, r)
