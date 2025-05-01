@@ -58,7 +58,7 @@ func sendReadRequest(t *testing.T, store router.MetricsStorage, body any) *resty
 
 	request := resty.New().R()
 	request.Method = http.MethodPost
-	request.URL = srv.URL + "/value"
+	request.URL = srv.URL + "/value/"
 	request.Body = body
 	request.SetHeader("Content-Type", "application/json")
 

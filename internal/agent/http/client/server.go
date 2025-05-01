@@ -33,6 +33,6 @@ func (s *ServerClient) sendMetric(body *model.Metrics) error {
 	_, err := resty.New().R().
 		SetHeader("Content-Type", "application/json").
 		SetBody(body).
-		Post("http://" + s.serverAddress + "/update")
+		Post("http://" + s.serverAddress + "/update/")
 	return err
 }

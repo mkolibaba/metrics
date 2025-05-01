@@ -102,7 +102,7 @@ func sendUpdateRequest(t *testing.T, store router.MetricsStorage, body any) *res
 
 	request := resty.New().R()
 	request.Method = http.MethodPost
-	request.URL = srv.URL + "/update"
+	request.URL = srv.URL + "/update/"
 	request.Body = body
 	request.SetHeader("Content-Type", "application/json")
 

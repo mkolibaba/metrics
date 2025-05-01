@@ -25,8 +25,8 @@ func New(store MetricsStorage) chi.Router {
 	r.Get("/value/{type}/{name}", read.New(store))
 	r.Post("/update/{type}/{name}/{value}", update.New(store))
 
-	r.Post("/value", read_json.New(store))
-	r.Post("/update", update_json.New(store))
+	r.Post("/value/", read_json.New(store))
+	r.Post("/update/", update_json.New(store))
 
 	return r
 }
