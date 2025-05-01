@@ -1,4 +1,4 @@
-package update_json_test
+package updatejson_test
 
 import (
 	"github.com/go-resty/resty/v2"

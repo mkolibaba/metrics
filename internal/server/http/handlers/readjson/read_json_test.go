@@ -1,4 +1,4 @@
-package read_json_test
+package readjson_test
 
 import (
 	"fmt"

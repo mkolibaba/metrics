@@ -1,4 +1,4 @@
-package update_json
+package updatejson
 
 import (
 	"encoding/json"

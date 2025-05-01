@@ -4,9 +4,9 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/mkolibaba/metrics/internal/server/http/handlers/list"
 	"github.com/mkolibaba/metrics/internal/server/http/handlers/read"
-	"github.com/mkolibaba/metrics/internal/server/http/handlers/read_json"
+	"github.com/mkolibaba/metrics/internal/server/http/handlers/readjson"
 	"github.com/mkolibaba/metrics/internal/server/http/handlers/update"
-	"github.com/mkolibaba/metrics/internal/server/http/handlers/update_json"
+	"github.com/mkolibaba/metrics/internal/server/http/handlers/updatejson"
 	"github.com/mkolibaba/metrics/internal/server/http/middleware"
 )
 
@@ -25,8 +25,8 @@ func New(store MetricsStorage) chi.Router {
 	r.Get("/value/{type}/{name}", read.New(store))
 	r.Post("/update/{type}/{name}/{value}", update.New(store))
 
-	r.Post("/value/", read_json.New(store))
-	r.Post("/update/", update_json.New(store))
+	r.Post("/value/", readjson.New(store))
+	r.Post("/update/", updatejson.New(store))
 
 	return r
 }
