@@ -20,6 +20,7 @@ func New(getter metricsGetter) http.HandlerFunc {
 			w.WriteHeader(http.StatusUnsupportedMediaType)
 			return
 		}
+		w.Header().Set("Content-Type", "application/json")
 
 		requestBody := &model.Metrics{}
 		err := json.NewDecoder(r.Body).Decode(requestBody)
