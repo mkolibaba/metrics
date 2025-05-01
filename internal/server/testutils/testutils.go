@@ -35,7 +35,7 @@ func AssertResponseBody(t *testing.T, want string, got bodyReader) {
 	}
 }
 
-func AssertResponseBodyJson(t *testing.T, want string, got bodyReader) {
+func AssertResponseBodyJSON(t *testing.T, want string, got bodyReader) {
 	t.Helper()
 	gotMap := make(map[string]any)
 	if err := json.Unmarshal(got.Body(), &gotMap); err != nil {

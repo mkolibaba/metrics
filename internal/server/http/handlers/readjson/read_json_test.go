@@ -19,7 +19,7 @@ func TestRead(t *testing.T) {
 		response := sendReadRequest(t, store, createRequestBody("counter1", "counter"))
 
 		want := createCounterResponseBody("counter1", 12)
-		testutils.AssertResponseBodyJson(t, want, response)
+		testutils.AssertResponseBodyJSON(t, want, response)
 	})
 	t.Run("Should_return_gauge", func(t *testing.T) {
 		store := inmemory.NewMemStorage()
@@ -28,7 +28,7 @@ func TestRead(t *testing.T) {
 		response := sendReadRequest(t, store, createRequestBody("gauge1", "gauge"))
 
 		want := createGaugeResponseBody("gauge1", 34.56)
-		testutils.AssertResponseBodyJson(t, want, response)
+		testutils.AssertResponseBodyJSON(t, want, response)
 	})
 	t.Run("Should_handle_unexisted_metric", func(t *testing.T) {
 		store := inmemory.NewMemStorage()
