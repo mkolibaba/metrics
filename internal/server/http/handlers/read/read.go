@@ -5,10 +5,10 @@ import (
 	"errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/mkolibaba/metrics/internal/common/http/model"
+	"github.com/mkolibaba/metrics/internal/common/logger"
 	"github.com/mkolibaba/metrics/internal/server/http/handlers"
 	"github.com/mkolibaba/metrics/internal/server/storage"
 	"io"
-	"log"
 	"net/http"
 	"strconv"
 )
@@ -22,7 +22,7 @@ func New(getter MetricsGetter) http.HandlerFunc {
 	writeResponse := func(w http.ResponseWriter, text string) {
 		_, err := io.WriteString(w, text)
 		if err != nil {
-			log.Printf("error during processing metrics read request: %v", err)
+			logger.Sugared.Errorf("error during processing metrics read request: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}

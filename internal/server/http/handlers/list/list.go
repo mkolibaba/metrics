@@ -2,8 +2,8 @@ package list
 
 import (
 	"fmt"
+	"github.com/mkolibaba/metrics/internal/common/logger"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 )
@@ -27,7 +27,7 @@ func New(getter AllMetricsGetter) http.HandlerFunc {
 		}
 		_, err := io.WriteString(w, strings.Join(metrics, "\n"))
 		if err != nil {
-			log.Printf("error during processing metrics list request: %v", err)
+			logger.Sugared.Errorf("error during processing metrics list request: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}

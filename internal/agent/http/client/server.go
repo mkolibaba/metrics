@@ -38,9 +38,11 @@ func (s *ServerClient) UpdateGauge(name string, value float64) error {
 
 func (s *ServerClient) sendMetric(body *model.Metrics) error {
 	var compressedBody bytes.Buffer
-	if err := json.NewEncoder(gzip.NewWriter(&compressedBody)).Encode(body); err != nil {
+	gw := gzip.NewWriter(&compressedBody)
+	if err := json.NewEncoder(gw).Encode(body); err != nil {
 		return err
 	}
+	gw.Close()
 
 	_, err := s.client.R().
 		SetHeader("Content-Type", "application/json").
