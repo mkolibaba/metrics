@@ -15,6 +15,7 @@ type AllMetricsGetter interface {
 
 func New(getter AllMetricsGetter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
 		metrics := make([]string, len(getter.GetGauges())+len(getter.GetCounters()))
 		var i int
 		for k, v := range getter.GetGauges() {
