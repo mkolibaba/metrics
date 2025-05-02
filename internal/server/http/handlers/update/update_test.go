@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/go-resty/resty/v2"
 	"github.com/mkolibaba/metrics/internal/server/http/router"
+	"github.com/mkolibaba/metrics/internal/server/storage/inmemory"
 	"github.com/mkolibaba/metrics/internal/server/storage/mocks"
 	"github.com/mkolibaba/metrics/internal/server/testutils"
 	"net/http"
@@ -110,20 +111,138 @@ func TestUpdateHandlerCallsStoreCorrectly(t *testing.T) {
 	})
 }
 
+func TestSendMetricJSON(t *testing.T) {
+	type want struct {
+		status   int
+		calls    int
+		names    []string
+		counters []int64
+		gauges   []float64
+	}
+
+	cases := []struct {
+		name string
+		body string
+		want want
+	}{
+		{
+			name: "should_update_counter",
+			body: "{\"id\": \"counter1\",\"type\": \"counter\",\"delta\": 12}",
+			want: want{
+				status:   200,
+				calls:    1,
+				names:    []string{"counter1"},
+				counters: []int64{12},
+			},
+		},
+		{
+			name: "should_update_gauge",
+			body: "{\"id\": \"gauge1\",\"type\": \"gauge\",\"value\": 12.34}",
+			want: want{
+				status: 200,
+				calls:  1,
+				names:  []string{"gauge1"},
+				gauges: []float64{12.34},
+			},
+		},
+		{
+			name: "invalid_update_counter",
+			body: "{\"id\": \"counter1\",\"type\": \"counter\",\"delta\": 12.34}",
+			want: want{
+				status: 400,
+			},
+		},
+		{
+			name: "invalid_update_gauge",
+			body: "{\"id\": \"gauge1\",\"type\": \"gauge\",\"delta\": 12.34}",
+			want: want{
+				status: 400,
+			},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			store := &mocks.MetricsStorageMock{}
+
+			response := sendUpdateRequestJSON(t, store, c.body)
+
+			testutils.AssertResponseStatusCode(t, c.want.status, response)
+			store.AssertCalled(t, c.want.calls)
+			store.AssertNames(t, c.want.names)
+			store.AssertCountersValues(t, c.want.counters)
+			store.AssertGaugesValues(t, c.want.gauges)
+		})
+	}
+}
+
+func TestSendMetricResponseJSON(t *testing.T) {
+	t.Run("should_return_new_counter", func(t *testing.T) {
+		store := inmemory.NewMemStorage()
+		body := "{\"id\": \"counter1\",\"type\": \"counter\",\"delta\": 12}"
+
+		response := sendUpdateRequestJSON(t, store, body)
+		want := testutils.CreateCounterResponseBodyJSON("counter1", 12)
+		testutils.AssertResponseBodyJSON(t, want, response)
+	})
+	t.Run("should_return_updated_counter", func(t *testing.T) {
+		store := inmemory.NewMemStorage()
+		store.UpdateCounter("counter1", 12)
+		body := "{\"id\": \"counter1\",\"type\": \"counter\",\"delta\": 12}"
+
+		response := sendUpdateRequestJSON(t, store, body)
+		want := testutils.CreateCounterResponseBodyJSON("counter1", 24)
+		testutils.AssertResponseBodyJSON(t, want, response)
+	})
+	t.Run("should_return_new_gauge", func(t *testing.T) {
+		store := inmemory.NewMemStorage()
+		body := "{\"id\": \"gauge1\",\"type\": \"gauge\",\"value\": 12.34}"
+
+		response := sendUpdateRequestJSON(t, store, body)
+		want := testutils.CreateGaugeResponseBodyJSON("gauge1", 12.34)
+		testutils.AssertResponseBodyJSON(t, want, response)
+	})
+	t.Run("should_return_updated_gauge", func(t *testing.T) {
+		store := inmemory.NewMemStorage()
+		store.UpdateGauge("gauge1", 12.34)
+		body := "{\"id\": \"gauge1\",\"type\": \"gauge\",\"value\": 12.34}"
+
+		response := sendUpdateRequestJSON(t, store, body)
+		want := testutils.CreateGaugeResponseBodyJSON("gauge1", 12.34)
+		testutils.AssertResponseBodyJSON(t, want, response)
+	})
+}
+
+func sendUpdateRequestJSON(t *testing.T, store router.MetricsStorage, body any) *resty.Response {
+	t.Helper()
+
+	srv := httptest.NewServer(router.New(store))
+	defer srv.Close()
+
+	client := resty.New().
+		SetBaseURL(srv.URL)
+
+	response, err := client.R().
+		SetBody(body).
+		SetHeader("Content-Type", "application/json").
+		Execute(http.MethodPost, "/update/")
+	testutils.AssertNoError(t, err)
+
+	return response
+}
+
 func sendUpdateRequest(t *testing.T, store router.MetricsStorage, url string) *resty.Response {
 	t.Helper()
 
 	srv := httptest.NewServer(router.New(store))
 	defer srv.Close()
 
-	request := resty.New().R()
-	request.Method = http.MethodPost
-	request.URL = srv.URL + url
+	client := resty.New().
+		SetBaseURL(srv.URL)
 
-	response, err := request.Send()
-	if err != nil {
-		t.Fatalf("error when sending request: %v", err)
-	}
+	response, err := client.R().
+		Execute(http.MethodPost, url)
+	testutils.AssertNoError(t, err)
 
 	return response
 }

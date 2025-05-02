@@ -52,6 +52,17 @@ func New(getter MetricsGetter) http.HandlerFunc {
 }
 
 func NewJSON(getter MetricsGetter) http.HandlerFunc {
+	writeResponse := func(w http.ResponseWriter, t, name string, counter *int64, gauge *float64) {
+		responseBody := model.Metrics{
+			ID:    name,
+			MType: t,
+			Delta: counter,
+			Value: gauge,
+		}
+		if err := json.NewEncoder(w).Encode(responseBody); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Content-Type") != "application/json" {
 			w.WriteHeader(http.StatusUnsupportedMediaType)
@@ -69,18 +80,6 @@ func NewJSON(getter MetricsGetter) http.HandlerFunc {
 		t := requestBody.MType
 		name := requestBody.ID
 
-		send := func(counter *int64, gauge *float64) {
-			responseBody := model.Metrics{
-				ID:    name,
-				MType: t,
-				Delta: counter,
-				Value: gauge,
-			}
-			if err = json.NewEncoder(w).Encode(responseBody); err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-			}
-		}
-
 		switch t {
 		case handlers.MetricCounter:
 			counter, err := getter.GetCounter(name)
@@ -88,14 +87,14 @@ func NewJSON(getter MetricsGetter) http.HandlerFunc {
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}
-			send(&counter, nil)
+			writeResponse(w, t, name, &counter, nil)
 		case handlers.MetricGauge:
 			gauge, err := getter.GetGauge(name)
 			if errors.Is(err, storage.ErrMetricNotFound) {
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}
-			send(nil, &gauge)
+			writeResponse(w, t, name, nil, &gauge)
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}

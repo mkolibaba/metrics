@@ -5,7 +5,6 @@ import (
 	"github.com/mkolibaba/metrics/internal/server/http/handlers/list"
 	"github.com/mkolibaba/metrics/internal/server/http/handlers/read"
 	"github.com/mkolibaba/metrics/internal/server/http/handlers/update"
-	"github.com/mkolibaba/metrics/internal/server/http/handlers/updatejson"
 	"github.com/mkolibaba/metrics/internal/server/http/middleware"
 )
 
@@ -25,7 +24,7 @@ func New(store MetricsStorage) chi.Router {
 	r.Post("/update/{type}/{name}/{value}", update.New(store))
 
 	r.Post("/value/", read.NewJSON(store))
-	r.Post("/update/", updatejson.New(store))
+	r.Post("/update/", update.NewJSON(store))
 
 	return r
 }

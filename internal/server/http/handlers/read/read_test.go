@@ -68,7 +68,7 @@ func doTestRead(t *testing.T, sendRequest sendRequestFunc) {
 
 		// TODO: не самый лучший вариант, нужно поправить
 		if response.Request.Header.Get("Content-Type") == "application/json" {
-			want := createCounterResponseBodyJSON("counter1", 12)
+			want := testutils.CreateCounterResponseBodyJSON("counter1", 12)
 			testutils.AssertResponseBodyJSON(t, want, response)
 		} else {
 			testutils.AssertResponseBody(t, "12", response)
@@ -82,7 +82,7 @@ func doTestRead(t *testing.T, sendRequest sendRequestFunc) {
 
 		// TODO: не самый лучший вариант, нужно поправить
 		if response.Request.Header.Get("Content-Type") == "application/json" {
-			want := createGaugeResponseBodyJSON("gauge1", 34.56)
+			want := testutils.CreateGaugeResponseBodyJSON("gauge1", 34.56)
 			testutils.AssertResponseBodyJSON(t, want, response)
 		} else {
 			testutils.AssertResponseBody(t, "34.56", response)
@@ -110,12 +110,4 @@ func doTestRead(t *testing.T, sendRequest sendRequestFunc) {
 
 func createRequestBodyJSON(id, t string) string {
 	return fmt.Sprintf("{\"id\": \"%s\", \"type\": \"%s\"}", id, t)
-}
-
-func createGaugeResponseBodyJSON(id string, val float64) string {
-	return fmt.Sprintf("{\"id\": \"%s\", \"type\": \"gauge\", \"value\": %f}", id, val)
-}
-
-func createCounterResponseBodyJSON(id string, val int64) string {
-	return fmt.Sprintf("{\"id\": \"%s\", \"type\": \"counter\", \"delta\": %d}", id, val)
 }
