@@ -30,7 +30,7 @@ func TestList(t *testing.T) {
 
 		testutils.AssertResponseBody(t, want, response)
 
-		wantContentType := "text/plain"
+		wantContentType := "text/html"
 		gotContentType := response.Header().Get("Content-Type")
 
 		if !strings.Contains(gotContentType, wantContentType) {
