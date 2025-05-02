@@ -6,10 +6,13 @@ import (
 	"github.com/mkolibaba/metrics/internal/server/http/router"
 	"github.com/mkolibaba/metrics/internal/server/storage/inmemory"
 	"net/http"
+	"strings"
 )
 
 func Run() {
-	serverAddress := config.MustLoadServerConfig().ServerAddress
+	cfg := config.MustLoadServerConfig()
+	// TODO: почему gzip для text/html не работает с localhost:port?
+	serverAddress := strings.TrimPrefix(cfg.ServerAddress, "localhost")
 
 	store := inmemory.NewMemStorage()
 	r := router.New(store)
