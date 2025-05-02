@@ -1,16 +1,23 @@
 package client
 
 import (
+	"bytes"
+	"compress/gzip"
+	"encoding/json"
 	"github.com/go-resty/resty/v2"
 	"github.com/mkolibaba/metrics/internal/common/http/model"
 )
 
 type ServerClient struct {
-	serverAddress string
+	client *resty.Client
 }
 
 func New(serverAddress string) *ServerClient {
-	return &ServerClient{serverAddress}
+	client := resty.New().
+		SetBaseURL("http://" + serverAddress)
+	return &ServerClient{
+		client: client,
+	}
 }
 
 func (s *ServerClient) UpdateCounter(name string, value int64) error {
@@ -30,9 +37,15 @@ func (s *ServerClient) UpdateGauge(name string, value float64) error {
 }
 
 func (s *ServerClient) sendMetric(body *model.Metrics) error {
-	_, err := resty.New().R().
+	var compressedBody bytes.Buffer
+	if err := json.NewEncoder(gzip.NewWriter(&compressedBody)).Encode(body); err != nil {
+		return err
+	}
+
+	_, err := s.client.R().
 		SetHeader("Content-Type", "application/json").
-		SetBody(body).
-		Post("http://" + s.serverAddress + "/update/")
+		SetHeader("Content-Encoding", "gzip").
+		SetBody(compressedBody.Bytes()).
+		Post("/update/")
 	return err
 }

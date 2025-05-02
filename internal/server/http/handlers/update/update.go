@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"github.com/go-chi/chi/v5"
 	"github.com/mkolibaba/metrics/internal/common/http/model"
+	"github.com/mkolibaba/metrics/internal/common/logger"
 	"github.com/mkolibaba/metrics/internal/server/http/handlers"
 	"net/http"
 	"strconv"
@@ -62,6 +63,7 @@ func NewJSON(updater MetricsUpdater) http.HandlerFunc {
 
 		requestBody := &model.Metrics{}
 		if err := json.NewDecoder(r.Body).Decode(requestBody); err != nil {
+			logger.Sugared.Errorf("can not decode request body: %v", err)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}

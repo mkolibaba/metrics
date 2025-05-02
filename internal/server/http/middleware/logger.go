@@ -1,12 +1,10 @@
 package middleware
 
 import (
-	"go.uber.org/zap"
+	"github.com/mkolibaba/metrics/internal/common/logger"
 	"net/http"
 	"time"
 )
-
-var log *zap.SugaredLogger
 
 type responseData struct {
 	status int
@@ -37,7 +35,7 @@ func Logger(h http.Handler) http.Handler {
 		h.ServeHTTP(&writerWrapper, r)
 		duration := time.Since(start)
 
-		log.Infoln(
+		logger.Sugared.Infoln(
 			"uri", r.RequestURI,
 			"method", r.Method,
 			"status", writerWrapper.responseData.status,
@@ -45,13 +43,4 @@ func Logger(h http.Handler) http.Handler {
 			"size", writerWrapper.responseData.size,
 		)
 	})
-}
-
-func init() {
-	logger, err := zap.NewDevelopment()
-	if err != nil {
-		panic(err)
-	}
-
-	log = logger.Sugar()
 }

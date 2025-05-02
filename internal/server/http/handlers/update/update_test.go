@@ -1,6 +1,8 @@
 package update_test
 
 import (
+	"bytes"
+	"compress/gzip"
 	"fmt"
 	"github.com/go-resty/resty/v2"
 	"github.com/mkolibaba/metrics/internal/server/http/router"
@@ -213,7 +215,7 @@ func TestSendMetricResponseJSON(t *testing.T) {
 	})
 }
 
-func sendUpdateRequestJSON(t *testing.T, store router.MetricsStorage, body any) *resty.Response {
+func sendUpdateRequestJSON(t *testing.T, store router.MetricsStorage, body string) *resty.Response {
 	t.Helper()
 
 	srv := httptest.NewServer(router.New(store))
@@ -222,10 +224,18 @@ func sendUpdateRequestJSON(t *testing.T, store router.MetricsStorage, body any) 
 	client := resty.New().
 		SetBaseURL(srv.URL)
 
+	// TODO: можно разделить на сжатые и несжатые
+	var reqBody bytes.Buffer
+	gw := gzip.NewWriter(&reqBody)
+	_, err := gw.Write([]byte(body))
+	gw.Close()
+	testutils.AssertNoError(t, err)
+
 	response, err := client.R().
-		SetBody(body).
+		SetBody(reqBody.Bytes()).
+		SetHeader("Content-Encoding", "gzip").
 		SetHeader("Content-Type", "application/json").
-		Execute(http.MethodPost, "/update/")
+		Post("/update/")
 	testutils.AssertNoError(t, err)
 
 	return response

@@ -18,6 +18,7 @@ func New(store MetricsStorage) chi.Router {
 	r := chi.NewRouter()
 
 	r.Use(middleware.Logger)
+	r.Use(middleware.Compressor)
 
 	r.Get("/", list.New(store))
 	r.Get("/value/{type}/{name}", read.New(store))

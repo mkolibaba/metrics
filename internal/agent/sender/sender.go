@@ -1,7 +1,7 @@
 package sender
 
 import (
-	"log"
+	"github.com/mkolibaba/metrics/internal/common/logger"
 	"time"
 )
 
@@ -44,13 +44,13 @@ func (m *MetricsSender) send() {
 	for k, v := range m.collector.GetGauges() {
 		err := m.serverAPI.UpdateGauge(k, v)
 		if err != nil {
-			log.Print(err)
+			logger.Sugared.Errorf("error during gauge value send: %v", err)
 		}
 	}
 	for k, v := range m.collector.GetCounters() {
 		err := m.serverAPI.UpdateCounter(k, v)
 		if err != nil {
-			log.Print(err)
+			logger.Sugared.Errorf("error during counter value send: %v", err)
 		}
 	}
 }

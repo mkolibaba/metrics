@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"maps"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -55,7 +56,8 @@ func AssertResponseBodyJSON(t *testing.T, want string, got bodyReader) {
 }
 
 func CreateGaugeResponseBodyJSON(id string, val float64) string {
-	return fmt.Sprintf("{\"id\": \"%s\", \"type\": \"gauge\", \"value\": %f}", id, val)
+	v := strconv.FormatFloat(val, 'f', -1, 64)
+	return fmt.Sprintf("{\"id\": \"%s\", \"type\": \"gauge\", \"value\": %s}", id, v)
 }
 
 func CreateCounterResponseBodyJSON(id string, val int64) string {
