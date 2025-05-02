@@ -28,16 +28,18 @@ func (m *MetricsStorageMock) GetCounter(name string) (int64, error) {
 	return 0, nil // TODO: реализовать при необходимости
 }
 
-func (m *MetricsStorageMock) UpdateGauge(name string, value float64) {
+func (m *MetricsStorageMock) UpdateGauge(name string, value float64) float64 {
 	m.Calls++
 	m.NamesPassed = append(m.NamesPassed, name)
 	m.GaugesValuesPassed = append(m.GaugesValuesPassed, value)
+	return 0
 }
 
-func (m *MetricsStorageMock) UpdateCounter(name string, value int64) {
+func (m *MetricsStorageMock) UpdateCounter(name string, value int64) int64 {
 	m.Calls++
 	m.NamesPassed = append(m.NamesPassed, name)
 	m.CountersValuesPassed = append(m.CountersValuesPassed, value)
+	return 0
 }
 
 // assertions

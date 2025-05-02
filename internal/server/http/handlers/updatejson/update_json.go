@@ -7,15 +7,12 @@ import (
 	"net/http"
 )
 
-type metricsGetterUpdater interface {
-	GetGauge(name string) (float64, error)
-	GetCounter(name string) (int64, error)
-	// TODO: может из апдейта вовзращать новое значение?
-	UpdateGauge(name string, value float64)
-	UpdateCounter(name string, value int64)
+type MetricsUpdater interface {
+	UpdateGauge(name string, value float64) float64
+	UpdateCounter(name string, value int64) int64
 }
 
-func New(getterUpdater metricsGetterUpdater) http.HandlerFunc {
+func New(updater MetricsUpdater) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Content-Type") != "application/json" {
 			w.WriteHeader(http.StatusUnsupportedMediaType)
@@ -37,23 +34,11 @@ func New(getterUpdater metricsGetterUpdater) http.HandlerFunc {
 		}
 		switch requestBody.MType {
 		case handlers.MetricGauge:
-			getterUpdater.UpdateGauge(requestBody.ID, *requestBody.Value)
-			val, err := getterUpdater.GetGauge(requestBody.ID)
-			if err != nil {
-				// TODO: что-то странное
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			responseBody.Value = &val
+			updated := updater.UpdateGauge(requestBody.ID, *requestBody.Value)
+			responseBody.Value = &updated
 		case handlers.MetricCounter:
-			getterUpdater.UpdateCounter(requestBody.ID, *requestBody.Delta)
-			val, err := getterUpdater.GetCounter(requestBody.ID)
-			if err != nil {
-				// TODO: что-то странное
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-			responseBody.Delta = &val
+			updated := updater.UpdateCounter(requestBody.ID, *requestBody.Delta)
+			responseBody.Delta = &updated
 		default:
 			w.WriteHeader(http.StatusBadRequest)
 			return
