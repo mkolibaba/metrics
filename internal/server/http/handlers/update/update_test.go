@@ -2,13 +2,13 @@ package update_test
 
 import (
 	"fmt"
-	"github.com/go-resty/resty/v2"
 	"github.com/mkolibaba/metrics/internal/server/http/router"
 	"github.com/mkolibaba/metrics/internal/server/storage/inmemory"
 	"github.com/mkolibaba/metrics/internal/server/storage/mocks"
 	"github.com/mkolibaba/metrics/internal/server/testutils"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -55,7 +55,7 @@ func TestUpdateHandlerShouldReturnCorrectStatus(t *testing.T) {
 			store := &mocks.MetricsStorageMock{}
 			response := sendUpdateRequest(t, store, c.url)
 
-			testutils.AssertResponseStatusCode(t, c.wantStatus, response)
+			testutils.AssertResponseStatusCode(t, c.wantStatus, response.Result().StatusCode)
 		})
 	}
 }
@@ -167,7 +167,7 @@ func TestSendMetricJSON(t *testing.T) {
 
 			response := sendUpdateRequestJSON(t, store, c.body)
 
-			testutils.AssertResponseStatusCode(t, c.want.status, response)
+			testutils.AssertResponseStatusCode(t, c.want.status, response.Result().StatusCode)
 			store.AssertCalled(t, c.want.calls)
 			store.AssertNames(t, c.want.names)
 			store.AssertCountersValues(t, c.want.counters)
@@ -183,7 +183,7 @@ func TestSendMetricResponseJSON(t *testing.T) {
 
 		response := sendUpdateRequestJSON(t, store, body)
 		want := testutils.CreateCounterResponseBodyJSON("counter1", 12)
-		testutils.AssertResponseBodyJSON(t, want, response)
+		testutils.AssertResponseBodyJSON(t, want, response.Body)
 	})
 	t.Run("should_return_updated_counter", func(t *testing.T) {
 		store := inmemory.NewMemStorage()
@@ -192,7 +192,7 @@ func TestSendMetricResponseJSON(t *testing.T) {
 
 		response := sendUpdateRequestJSON(t, store, body)
 		want := testutils.CreateCounterResponseBodyJSON("counter1", 24)
-		testutils.AssertResponseBodyJSON(t, want, response)
+		testutils.AssertResponseBodyJSON(t, want, response.Body)
 	})
 	t.Run("should_return_new_gauge", func(t *testing.T) {
 		store := inmemory.NewMemStorage()
@@ -200,7 +200,7 @@ func TestSendMetricResponseJSON(t *testing.T) {
 
 		response := sendUpdateRequestJSON(t, store, body)
 		want := testutils.CreateGaugeResponseBodyJSON("gauge1", 12.34)
-		testutils.AssertResponseBodyJSON(t, want, response)
+		testutils.AssertResponseBodyJSON(t, want, response.Body)
 	})
 	t.Run("should_return_updated_gauge", func(t *testing.T) {
 		store := inmemory.NewMemStorage()
@@ -209,48 +209,23 @@ func TestSendMetricResponseJSON(t *testing.T) {
 
 		response := sendUpdateRequestJSON(t, store, body)
 		want := testutils.CreateGaugeResponseBodyJSON("gauge1", 12.34)
-		testutils.AssertResponseBodyJSON(t, want, response)
+		testutils.AssertResponseBodyJSON(t, want, response.Body)
 	})
 }
 
-func sendUpdateRequestJSON(t *testing.T, store router.MetricsStorage, body string) *resty.Response {
+func sendUpdateRequestJSON(t *testing.T, store router.MetricsStorage, body string) *httptest.ResponseRecorder {
 	t.Helper()
 
-	srv := httptest.NewServer(router.New(store))
-	defer srv.Close()
-
-	client := resty.New().
-		SetBaseURL(srv.URL)
-
-	// TODO: можно разделить на сжатые и несжатые
-	//var reqBody bytes.Buffer
-	//gw := gzip.NewWriter(&reqBody)
-	//_, err := gw.Write([]byte(body))
-	//gw.Close()
-	//testutils.AssertNoError(t, err)
-
-	response, err := client.R().
-		SetBody(body).
-		//SetHeader("Content-Encoding", "gzip").
-		SetHeader("Content-Type", "application/json").
-		Post("/update/")
-	testutils.AssertNoError(t, err)
-
-	return response
+	request := httptest.NewRequest(http.MethodPost, "/update/", strings.NewReader(body))
+	request.Header.Set("Content-Type", "application/json")
+	server := testutils.NewTestServer(router.New(store))
+	return server.Execute(request)
 }
 
-func sendUpdateRequest(t *testing.T, store router.MetricsStorage, url string) *resty.Response {
+func sendUpdateRequest(t *testing.T, store router.MetricsStorage, url string) *httptest.ResponseRecorder {
 	t.Helper()
 
-	srv := httptest.NewServer(router.New(store))
-	defer srv.Close()
-
-	client := resty.New().
-		SetBaseURL(srv.URL)
-
-	response, err := client.R().
-		Execute(http.MethodPost, url)
-	testutils.AssertNoError(t, err)
-
-	return response
+	request := httptest.NewRequest(http.MethodPost, url, nil)
+	server := testutils.NewTestServer(router.New(store))
+	return server.Execute(request)
 }

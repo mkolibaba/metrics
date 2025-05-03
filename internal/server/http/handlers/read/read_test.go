@@ -2,58 +2,40 @@ package read_test
 
 import (
 	"fmt"
-	"github.com/go-resty/resty/v2"
 	"github.com/mkolibaba/metrics/internal/server/http/router"
 	"github.com/mkolibaba/metrics/internal/server/storage/inmemory"
 	"github.com/mkolibaba/metrics/internal/server/testutils"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
-type sendRequestFunc func(store router.MetricsStorage, tp, name string) *resty.Response
+type sendRequestFunc func(store router.MetricsStorage, tp, name string) *httptest.ResponseRecorder
 
-func TestReadPlain(t *testing.T) {
-	sendRequest := func(store router.MetricsStorage, tp, name string) *resty.Response {
+func TestReadText(t *testing.T) {
+	sendRequest := func(store router.MetricsStorage, tp, name string) *httptest.ResponseRecorder {
 		t.Helper()
 
-		srv := httptest.NewServer(router.New(store))
-		defer srv.Close()
+		url := fmt.Sprintf("/value/%s/%s", tp, name)
+		request := httptest.NewRequest(http.MethodGet, url, nil)
 
-		client := resty.New().
-			SetBaseURL(srv.URL)
-
-		response, err := client.R().
-			SetPathParams(map[string]string{
-				"t":    tp,
-				"name": name,
-			}).
-			Execute(http.MethodGet, "/value/{t}/{name}")
-		testutils.AssertNoError(t, err)
-
-		return response
+		server := testutils.NewTestServer(router.New(store))
+		return server.Execute(request)
 	}
 
 	doTestRead(t, sendRequest)
 }
 
 func TestReadJSON(t *testing.T) {
-	sendRequest := func(store router.MetricsStorage, tp, name string) *resty.Response {
+	sendRequest := func(store router.MetricsStorage, tp, name string) *httptest.ResponseRecorder {
 		t.Helper()
 
-		srv := httptest.NewServer(router.New(store))
-		defer srv.Close()
+		request := httptest.NewRequest(http.MethodPost, "/value/", strings.NewReader(createRequestBodyJSON(name, tp)))
+		request.Header.Set("Content-Type", "application/json")
 
-		client := resty.New().
-			SetBaseURL(srv.URL)
-
-		response, err := client.R().
-			SetHeader("Content-Type", "application/json").
-			SetBody(createRequestBodyJSON(name, tp)).
-			Execute(http.MethodPost, "/value/")
-		testutils.AssertNoError(t, err)
-
-		return response
+		server := testutils.NewTestServer(router.New(store))
+		return server.Execute(request)
 	}
 
 	doTestRead(t, sendRequest)
@@ -67,11 +49,11 @@ func doTestRead(t *testing.T, sendRequest sendRequestFunc) {
 		response := sendRequest(store, "counter", "counter1")
 
 		// TODO: не самый лучший вариант, нужно поправить
-		if response.Request.Header.Get("Content-Type") == "application/json" {
+		if response.Header().Get("Content-Type") == "application/json" {
 			want := testutils.CreateCounterResponseBodyJSON("counter1", 12)
-			testutils.AssertResponseBodyJSON(t, want, response)
+			testutils.AssertResponseBodyJSON(t, want, response.Body)
 		} else {
-			testutils.AssertResponseBody(t, "12", response)
+			testutils.AssertResponseBody(t, "12", response.Body)
 		}
 	})
 	t.Run("Should_return_gauge", func(t *testing.T) {
@@ -81,11 +63,11 @@ func doTestRead(t *testing.T, sendRequest sendRequestFunc) {
 		response := sendRequest(store, "gauge", "gauge1")
 
 		// TODO: не самый лучший вариант, нужно поправить
-		if response.Request.Header.Get("Content-Type") == "application/json" {
+		if response.Header().Get("Content-Type") == "application/json" {
 			want := testutils.CreateGaugeResponseBodyJSON("gauge1", 34.56)
-			testutils.AssertResponseBodyJSON(t, want, response)
+			testutils.AssertResponseBodyJSON(t, want, response.Body)
 		} else {
-			testutils.AssertResponseBody(t, "34.56", response)
+			testutils.AssertResponseBody(t, "34.56", response.Body)
 		}
 	})
 	t.Run("Should_handle_unexisted_metric", func(t *testing.T) {
@@ -95,7 +77,7 @@ func doTestRead(t *testing.T, sendRequest sendRequestFunc) {
 
 		response := sendRequest(store, "gauge", "gauge2")
 
-		testutils.AssertResponseStatusCode(t, 404, response)
+		testutils.AssertResponseStatusCode(t, 404, response.Result().StatusCode)
 	})
 	t.Run("Should_handle_unexisted_metric_type", func(t *testing.T) {
 		store := inmemory.NewMemStorage()
@@ -104,7 +86,7 @@ func doTestRead(t *testing.T, sendRequest sendRequestFunc) {
 
 		response := sendRequest(store, "lolkek", "gauge1")
 
-		testutils.AssertResponseStatusCode(t, 404, response)
+		testutils.AssertResponseStatusCode(t, 404, response.Result().StatusCode)
 	})
 }
 

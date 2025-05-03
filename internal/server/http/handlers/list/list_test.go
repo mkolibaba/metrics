@@ -1,7 +1,6 @@
 package list_test
 
 import (
-	"github.com/go-resty/resty/v2"
 	"github.com/mkolibaba/metrics/internal/server/http/router"
 	"github.com/mkolibaba/metrics/internal/server/storage/inmemory"
 	"github.com/mkolibaba/metrics/internal/server/testutils"
@@ -16,8 +15,8 @@ func TestList(t *testing.T) {
 		store := inmemory.NewMemStorage()
 		response := sendRequest(t, store)
 
-		testutils.AssertResponseStatusCode(t, 200, response)
-		testutils.AssertResponseBody(t, "", response)
+		testutils.AssertResponseStatusCode(t, 200, response.Result().StatusCode)
+		testutils.AssertResponseBody(t, "", response.Body)
 	})
 	t.Run("Should_return_list_of_metrics", func(t *testing.T) {
 		store := inmemory.NewMemStorage()
@@ -28,7 +27,7 @@ func TestList(t *testing.T) {
 
 		want := "gauge1: 34.560\ncounter1: 12"
 
-		testutils.AssertResponseBody(t, want, response)
+		testutils.AssertResponseBody(t, want, response.Body)
 
 		wantContentType := "text/html"
 		gotContentType := response.Header().Get("Content-Type")
@@ -39,18 +38,10 @@ func TestList(t *testing.T) {
 	})
 }
 
-func sendRequest(t *testing.T, store router.MetricsStorage) *resty.Response {
+func sendRequest(t *testing.T, store router.MetricsStorage) *httptest.ResponseRecorder {
 	t.Helper()
 
-	srv := httptest.NewServer(router.New(store))
-	defer srv.Close()
-
-	request := resty.New().R()
-	request.Method = http.MethodGet
-	request.URL = srv.URL + "/"
-
-	response, err := request.Send()
-	testutils.AssertNoError(t, err)
-
-	return response
+	request := httptest.NewRequest(http.MethodGet, "/", nil)
+	server := testutils.NewTestServer(router.New(store))
+	return server.Execute(request)
 }
