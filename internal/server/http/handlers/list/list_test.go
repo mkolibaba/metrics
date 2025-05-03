@@ -16,7 +16,7 @@ func TestList(t *testing.T) {
 		response := sendRequest(t, store)
 
 		testutils.AssertResponseStatusCode(t, 200, response.Result().StatusCode)
-		testutils.AssertResponseBody(t, "", response.Body)
+		testutils.AssertResponseBody(t, "<!DOCTYPE html><html><body></body></html>", response.Body)
 	})
 	t.Run("Should_return_list_of_metrics", func(t *testing.T) {
 		store := inmemory.NewMemStorage()
@@ -25,7 +25,7 @@ func TestList(t *testing.T) {
 
 		response := sendRequest(t, store)
 
-		want := "gauge1: 34.560\ncounter1: 12"
+		want := "<!DOCTYPE html><html><body>gauge1: 34.560<br>counter1: 12</body></html>"
 
 		testutils.AssertResponseBody(t, want, response.Body)
 
