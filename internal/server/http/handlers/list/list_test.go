@@ -15,8 +15,10 @@ func TestList(t *testing.T) {
 		store := inmemory.NewMemStorage()
 		response := sendRequest(t, store)
 
-		testutils.AssertResponseStatusCode(t, 200, response.Result().StatusCode)
-		testutils.AssertResponseBody(t, "<!DOCTYPE html><html><body></body></html>", response.Body)
+		result := response.Result()
+		defer result.Body.Close()
+		testutils.AssertResponseStatusCode(t, 200, result.StatusCode)
+		testutils.AssertResponseBody(t, "<!DOCTYPE html><html><body></body></html>", result.Body)
 	})
 	t.Run("Should_return_list_of_metrics", func(t *testing.T) {
 		store := inmemory.NewMemStorage()

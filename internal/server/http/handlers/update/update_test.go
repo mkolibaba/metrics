@@ -55,7 +55,9 @@ func TestUpdateHandlerShouldReturnCorrectStatus(t *testing.T) {
 			store := &mocks.MetricsStorageMock{}
 			response := sendUpdateRequest(t, store, c.url)
 
-			testutils.AssertResponseStatusCode(t, c.wantStatus, response.Result().StatusCode)
+			result := response.Result()
+			defer result.Body.Close()
+			testutils.AssertResponseStatusCode(t, c.wantStatus, result.StatusCode)
 		})
 	}
 }
@@ -167,7 +169,9 @@ func TestSendMetricJSON(t *testing.T) {
 
 			response := sendUpdateRequestJSON(t, store, c.body)
 
-			testutils.AssertResponseStatusCode(t, c.want.status, response.Result().StatusCode)
+			result := response.Result()
+			defer result.Body.Close()
+			testutils.AssertResponseStatusCode(t, c.want.status, result.StatusCode)
 			store.AssertCalled(t, c.want.calls)
 			store.AssertNames(t, c.want.names)
 			store.AssertCountersValues(t, c.want.counters)

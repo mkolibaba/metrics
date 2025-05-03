@@ -77,7 +77,9 @@ func doTestRead(t *testing.T, sendRequest sendRequestFunc) {
 
 		response := sendRequest(store, "gauge", "gauge2")
 
-		testutils.AssertResponseStatusCode(t, 404, response.Result().StatusCode)
+		result := response.Result()
+		defer result.Body.Close()
+		testutils.AssertResponseStatusCode(t, 404, result.StatusCode)
 	})
 	t.Run("Should_handle_unexisted_metric_type", func(t *testing.T) {
 		store := inmemory.NewMemStorage()
@@ -86,7 +88,9 @@ func doTestRead(t *testing.T, sendRequest sendRequestFunc) {
 
 		response := sendRequest(store, "lolkek", "gauge1")
 
-		testutils.AssertResponseStatusCode(t, 404, response.Result().StatusCode)
+		result := response.Result()
+		defer result.Body.Close()
+		testutils.AssertResponseStatusCode(t, 404, result.StatusCode)
 	})
 }
 
