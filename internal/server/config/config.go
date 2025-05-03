@@ -11,12 +11,13 @@ type ServerConfig struct {
 
 func MustLoadServerConfig() *ServerConfig {
 	cfg := &ServerConfig{}
-	address, ok := os.LookupEnv("ADDRESS")
-	if ok {
-		cfg.ServerAddress = address
-	} else {
-		flag.StringVar(&cfg.ServerAddress, "a", "localhost:8080", "server address")
-	}
+
+	flag.StringVar(&cfg.ServerAddress, "a", "localhost:8080", "server address")
 	flag.Parse()
+
+	if address, ok := os.LookupEnv("ADDRESS"); ok {
+		cfg.ServerAddress = address
+	}
+
 	return cfg
 }
