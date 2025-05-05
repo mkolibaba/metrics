@@ -37,14 +37,7 @@ func TestShouldCompress(t *testing.T) {
 
 			gr, err := gzip.NewReader(recorder.Body)
 			testutils.AssertNoError(t, err)
-
-			body, err := io.ReadAll(gr)
-			gotBody := string(body)
-			testutils.AssertNoError(t, err)
-
-			if gotBody != c.responseBody {
-				t.Errorf("error response body: got '%s', want '%s'", gotBody, c.responseBody)
-			}
+			testutils.AssertResponseBody(t, c.responseBody, gr)
 		})
 	}
 }
@@ -59,10 +52,7 @@ func TestShouldNotCompress(t *testing.T) {
 		t.Errorf("expecting header Content-Encoding to be empty, got %s", recorder.Header().Get("Content-Encoding"))
 	}
 
-	gotBody := recorder.Body.String()
-	if responseBody != gotBody {
-		t.Errorf("error response body: got '%s', want '%s'", gotBody, responseBody)
-	}
+	testutils.AssertResponseBody(t, responseBody, recorder.Body)
 }
 
 func prepareAndSendRequest(contentType, responseBody string) *httptest.ResponseRecorder {

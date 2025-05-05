@@ -11,10 +11,6 @@ import (
 	"testing/iotest"
 )
 
-type bodyReader interface {
-	Body() []byte
-}
-
 func AssertNoError(t *testing.T, err error) {
 	t.Helper()
 	if err != nil {
