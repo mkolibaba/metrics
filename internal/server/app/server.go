@@ -11,8 +11,6 @@ import (
 
 func Run() {
 	cfg := config.MustLoadServerConfig()
-	// TODO: почему gzip для text/html не работает с localhost:port?
-	serverAddress := strings.TrimPrefix(cfg.ServerAddress, "localhost")
 
 	store := mustCreateFileStorage(cfg)
 	defer store.Close()
@@ -20,6 +18,8 @@ func Run() {
 
 	logger.Sugared.Infof("Running server on %s", serverAddress)
 	if err := http.ListenAndServe(serverAddress, r); err != nil {
+	logger.Sugared.Infof("running server on %s", cfg.ServerAddress)
+	if err := http.ListenAndServe(cfg.ServerAddress, r); err != nil {
 		logger.Sugared.Fatal(err)
 	}
 }
