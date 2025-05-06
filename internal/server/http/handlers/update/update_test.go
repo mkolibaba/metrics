@@ -2,13 +2,13 @@ package update_test
 
 import (
 	"fmt"
-	"github.com/go-resty/resty/v2"
 	"github.com/mkolibaba/metrics/internal/server/http/router"
+	"github.com/mkolibaba/metrics/internal/server/storage/inmemory"
 	"github.com/mkolibaba/metrics/internal/server/storage/mocks"
 	"github.com/mkolibaba/metrics/internal/server/testutils"
 	"net/http"
 	"net/http/httptest"
-	"slices"
+	"strings"
 	"testing"
 )
 
@@ -55,7 +55,9 @@ func TestUpdateHandlerShouldReturnCorrectStatus(t *testing.T) {
 			store := &mocks.MetricsStorageMock{}
 			response := sendUpdateRequest(t, store, c.url)
 
-			testutils.AssertResponseStatusCode(t, c.wantStatus, response)
+			result := response.Result()
+			defer result.Body.Close()
+			testutils.AssertResponseStatusCode(t, c.wantStatus, result.StatusCode)
 		})
 	}
 }
@@ -68,20 +70,11 @@ func TestUpdateHandlerCallsStoreCorrectly(t *testing.T) {
 		countersValuesPassed []int64
 	}
 
-	assertState := func(t *testing.T, got *mocks.MetricsStorageMock, want want) {
-		t.Helper()
-		if got.Calls != want.calls {
-			t.Errorf("want store to be called exactly %d times, got %d", want.calls, got.Calls)
-		}
-		if !slices.Equal(got.NamesPassed, want.namesPassed) {
-			t.Errorf("want store to be called with names %v, got %v", want.calls, got.Calls)
-		}
-		if !slices.Equal(got.GaugesValuesPassed, want.gaugesValuesPassed) {
-			t.Errorf("want store to be called with gauges values %v, got %v", want.gaugesValuesPassed, got.GaugesValuesPassed)
-		}
-		if !slices.Equal(got.CountersValuesPassed, want.countersValuesPassed) {
-			t.Errorf("want store to be called with counters values %v, got %v", want.countersValuesPassed, got.CountersValuesPassed)
-		}
+	assertState := func(t *testing.T, store *mocks.MetricsStorageMock, want want) {
+		store.AssertCalled(t, want.calls)
+		store.AssertNames(t, want.namesPassed)
+		store.AssertGaugesValues(t, want.gaugesValuesPassed)
+		store.AssertCountersValues(t, want.countersValuesPassed)
 	}
 
 	t.Run("Should_call_store_exactly_1_time", func(t *testing.T) {
@@ -120,20 +113,123 @@ func TestUpdateHandlerCallsStoreCorrectly(t *testing.T) {
 	})
 }
 
-func sendUpdateRequest(t *testing.T, store router.MetricsStorage, url string) *resty.Response {
-	t.Helper()
-
-	srv := httptest.NewServer(router.New(store))
-	defer srv.Close()
-
-	request := resty.New().R()
-	request.Method = http.MethodPost
-	request.URL = srv.URL + url
-
-	response, err := request.Send()
-	if err != nil {
-		t.Fatalf("error when sending request: %v", err)
+func TestSendMetricJSON(t *testing.T) {
+	type want struct {
+		status   int
+		calls    int
+		names    []string
+		counters []int64
+		gauges   []float64
 	}
 
-	return response
+	cases := []struct {
+		name string
+		body string
+		want want
+	}{
+		{
+			name: "should_update_counter",
+			body: "{\"id\": \"counter1\",\"type\": \"counter\",\"delta\": 12}",
+			want: want{
+				status:   200,
+				calls:    1,
+				names:    []string{"counter1"},
+				counters: []int64{12},
+			},
+		},
+		{
+			name: "should_update_gauge",
+			body: "{\"id\": \"gauge1\",\"type\": \"gauge\",\"value\": 12.34}",
+			want: want{
+				status: 200,
+				calls:  1,
+				names:  []string{"gauge1"},
+				gauges: []float64{12.34},
+			},
+		},
+		{
+			name: "invalid_update_counter",
+			body: "{\"id\": \"counter1\",\"type\": \"counter\",\"delta\": 12.34}",
+			want: want{
+				status: 400,
+			},
+		},
+		{
+			name: "invalid_update_gauge",
+			body: "{\"id\": \"gauge1\",\"type\": \"gauge\",\"delta\": 12.34}",
+			want: want{
+				status: 400,
+			},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			store := &mocks.MetricsStorageMock{}
+
+			response := sendUpdateRequestJSON(t, store, c.body)
+
+			result := response.Result()
+			defer result.Body.Close()
+			testutils.AssertResponseStatusCode(t, c.want.status, result.StatusCode)
+			store.AssertCalled(t, c.want.calls)
+			store.AssertNames(t, c.want.names)
+			store.AssertCountersValues(t, c.want.counters)
+			store.AssertGaugesValues(t, c.want.gauges)
+		})
+	}
+}
+
+func TestSendMetricResponseJSON(t *testing.T) {
+	t.Run("should_return_new_counter", func(t *testing.T) {
+		store := inmemory.NewMemStorage()
+		body := "{\"id\": \"counter1\",\"type\": \"counter\",\"delta\": 12}"
+
+		response := sendUpdateRequestJSON(t, store, body)
+		want := testutils.CreateCounterResponseBodyJSON("counter1", 12)
+		testutils.AssertResponseBodyJSON(t, want, response.Body)
+	})
+	t.Run("should_return_updated_counter", func(t *testing.T) {
+		store := inmemory.NewMemStorage()
+		store.UpdateCounter("counter1", 12)
+		body := "{\"id\": \"counter1\",\"type\": \"counter\",\"delta\": 12}"
+
+		response := sendUpdateRequestJSON(t, store, body)
+		want := testutils.CreateCounterResponseBodyJSON("counter1", 24)
+		testutils.AssertResponseBodyJSON(t, want, response.Body)
+	})
+	t.Run("should_return_new_gauge", func(t *testing.T) {
+		store := inmemory.NewMemStorage()
+		body := "{\"id\": \"gauge1\",\"type\": \"gauge\",\"value\": 12.34}"
+
+		response := sendUpdateRequestJSON(t, store, body)
+		want := testutils.CreateGaugeResponseBodyJSON("gauge1", 12.34)
+		testutils.AssertResponseBodyJSON(t, want, response.Body)
+	})
+	t.Run("should_return_updated_gauge", func(t *testing.T) {
+		store := inmemory.NewMemStorage()
+		store.UpdateGauge("gauge1", 12.34)
+		body := "{\"id\": \"gauge1\",\"type\": \"gauge\",\"value\": 12.34}"
+
+		response := sendUpdateRequestJSON(t, store, body)
+		want := testutils.CreateGaugeResponseBodyJSON("gauge1", 12.34)
+		testutils.AssertResponseBodyJSON(t, want, response.Body)
+	})
+}
+
+func sendUpdateRequestJSON(t *testing.T, store router.MetricsStorage, body string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	request := httptest.NewRequest(http.MethodPost, "/update/", strings.NewReader(body))
+	request.Header.Set("Content-Type", "application/json")
+	server := testutils.NewTestServer(router.New(store))
+	return server.Execute(request)
+}
+
+func sendUpdateRequest(t *testing.T, store router.MetricsStorage, url string) *httptest.ResponseRecorder {
+	t.Helper()
+
+	request := httptest.NewRequest(http.MethodPost, url, nil)
+	server := testutils.NewTestServer(router.New(store))
+	return server.Execute(request)
 }

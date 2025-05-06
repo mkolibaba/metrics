@@ -1,23 +1,30 @@
 package app
 
 import (
+	"github.com/mkolibaba/metrics/internal/common/logger"
 	"github.com/mkolibaba/metrics/internal/server/config"
 	"github.com/mkolibaba/metrics/internal/server/http/router"
-	"github.com/mkolibaba/metrics/internal/server/storage/inmemory"
-	"log"
+	"github.com/mkolibaba/metrics/internal/server/storage/jsonfile"
 	"net/http"
 )
 
 func Run() {
-	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
+	cfg := config.MustLoadServerConfig()
 
-	serverAddress := config.MustLoadServerConfig().ServerAddress
-
-	store := inmemory.NewMemStorage()
+	store := mustCreateFileStorage(cfg)
+	defer store.Close()
 	r := router.New(store)
 
-	log.Printf("Running server on %s", serverAddress)
-	if err := http.ListenAndServe(serverAddress, r); err != nil {
-		log.Fatal(err)
+	logger.Sugared.Infof("running server on %s", cfg.ServerAddress)
+	if err := http.ListenAndServe(cfg.ServerAddress, r); err != nil {
+		logger.Sugared.Fatal(err)
 	}
+}
+
+func mustCreateFileStorage(cfg *config.ServerConfig) *jsonfile.FileStorage {
+	store, err := jsonfile.NewFileStorage(cfg.FileStoragePath, cfg.StoreInterval, cfg.Restore)
+	if err != nil {
+		logger.Sugared.Fatalf("error creating file storage: %v", err)
+	}
+	return store
 }
