@@ -6,7 +6,6 @@ import (
 	"github.com/mkolibaba/metrics/internal/server/http/router"
 	"github.com/mkolibaba/metrics/internal/server/storage/jsonfile"
 	"net/http"
-	"strings"
 )
 
 func Run() {
@@ -16,8 +15,6 @@ func Run() {
 	defer store.Close()
 	r := router.New(store)
 
-	logger.Sugared.Infof("Running server on %s", serverAddress)
-	if err := http.ListenAndServe(serverAddress, r); err != nil {
 	logger.Sugared.Infof("running server on %s", cfg.ServerAddress)
 	if err := http.ListenAndServe(cfg.ServerAddress, r); err != nil {
 		logger.Sugared.Fatal(err)
