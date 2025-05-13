@@ -24,18 +24,15 @@ func NewMetricsSender(serverAPI ServerAPI, reportInterval time.Duration) *Metric
 func (m *MetricsSender) StartSend(chGauges <-chan map[string]float64, chCounters <-chan map[string]int64) error {
 	ticker := time.NewTicker(m.reportInterval)
 	defer ticker.Stop()
-	for {
-		// В будущем можно будет добавить обработку сигналов для завершения работы.
-		select {
-		case <-ticker.C:
-			gauges := <-chGauges
-			counters := <-chCounters
-			if err := m.send(gauges, counters); err != nil {
-				logger.Sugared.Errorf("error during metrics send: %v", err)
-				return err
-			}
+	for range ticker.C {
+		gauges := <-chGauges
+		counters := <-chCounters
+		if err := m.send(gauges, counters); err != nil {
+			logger.Sugared.Errorf("error during metrics send: %v", err)
+			return err
 		}
 	}
+	return nil
 }
 
 func (m *MetricsSender) send(gauges map[string]float64, counters map[string]int64) error {

@@ -20,14 +20,13 @@ func NewMetricsCollector(pollInterval time.Duration) *MetricsCollector {
 func (m *MetricsCollector) StartCollect(chGauges chan<- map[string]float64, chCounters chan<- map[string]int64) {
 	ticker := time.NewTicker(m.pollInterval)
 	defer ticker.Stop()
-	for {
-		select {
-		case <-ticker.C:
-			gauges := m.collect()
-			chGauges <- gauges
-			chCounters <- map[string]int64{"PollCount": int64(m.iterations)}
-		}
+	for range ticker.C {
+		gauges := m.collect()
+		chGauges <- gauges
+		chCounters <- map[string]int64{"PollCount": int64(m.iterations)}
 	}
+	close(chGauges)
+	close(chCounters)
 }
 
 func (m *MetricsCollector) collect() map[string]float64 {
