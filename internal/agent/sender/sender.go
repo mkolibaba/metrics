@@ -1,15 +1,11 @@
 package sender
 
 import (
-	"github.com/mkolibaba/metrics/internal/common/logger"
+	"fmt"
 	"time"
-)
 
-type Collector interface {
-	StartCollect()
-	GetGauges() map[string]float64
-	GetCounters() map[string]int64
-}
+	"github.com/mkolibaba/metrics/internal/common/logger"
+)
 
 type ServerAPI interface {
 	UpdateCounter(name string, value int64) error
@@ -17,40 +13,45 @@ type ServerAPI interface {
 }
 
 type MetricsSender struct {
-	collector      Collector
 	serverAPI      ServerAPI
 	reportInterval time.Duration
 }
 
-func NewMetricsSender(collector Collector, serverAPI ServerAPI, reportInterval time.Duration) *MetricsSender {
-	return &MetricsSender{collector, serverAPI, reportInterval}
+func NewMetricsSender(serverAPI ServerAPI, reportInterval time.Duration) *MetricsSender {
+	return &MetricsSender{serverAPI, reportInterval}
 }
 
-func (m *MetricsSender) StartCollectAndSend() {
-	m.collector.StartCollect()
-	m.StartSend()
-}
-
-func (m *MetricsSender) StartSend() {
-	go func() {
-		for {
-			time.Sleep(m.reportInterval)
-			m.send()
+func (m *MetricsSender) StartSend(chGauges <-chan map[string]float64, chCounters <-chan map[string]int64) error {
+	ticker := time.NewTicker(m.reportInterval)
+	defer ticker.Stop()
+	for {
+		// В будущем можно будет добавить обработку сигналов для завершения работы.
+		select {
+		case <-ticker.C:
+			gauges := <-chGauges
+			counters := <-chCounters
+			if err := m.send(gauges, counters); err != nil {
+				logger.Sugared.Errorf("error during metrics send: %v", err)
+				return err
+			}
 		}
-	}()
+	}
 }
 
-func (m *MetricsSender) send() {
-	for k, v := range m.collector.GetGauges() {
+func (m *MetricsSender) send(gauges map[string]float64, counters map[string]int64) error {
+	for k, v := range gauges {
 		err := m.serverAPI.UpdateGauge(k, v)
 		if err != nil {
 			logger.Sugared.Errorf("error during gauge value send: %v", err)
+			return fmt.Errorf("error during gauge value send: %v", err)
 		}
 	}
-	for k, v := range m.collector.GetCounters() {
+	for k, v := range counters {
 		err := m.serverAPI.UpdateCounter(k, v)
 		if err != nil {
 			logger.Sugared.Errorf("error during counter value send: %v", err)
+			return fmt.Errorf("error during counter value send: %v", err)
 		}
 	}
+	return nil
 }
