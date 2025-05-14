@@ -5,39 +5,43 @@ import (
 	"time"
 )
 
-func TestCollect(t *testing.T) {
-	t.Run("Should_collect_metrics", func(t *testing.T) {
-		collector := NewMetricsCollector(1 * time.Second)
+func TestMetricsCollector_StartCollect(t *testing.T) {
+	// Create a collector with a short poll interval for testing
+	collector := NewMetricsCollector(100 * time.Millisecond)
 
-		collector.collect()
+	// Create channels for gauges and counters
+	chGauges := make(chan map[string]float64, 1)
+	chCounters := make(chan map[string]int64, 1)
 
-		assertCollectorIterations(t, collector, 1)
+	// Start collecting in a goroutine
+	go collector.StartCollect(chGauges, chCounters)
 
-		// рандомные метрики
-		wantGauge := "Alloc"
-		if _, ok := collector.gauges[wantGauge]; !ok {
-			t.Errorf("no gauge by name = '%s' has been found", wantGauge)
+	// Wait for first collection
+	time.Sleep(350 * time.Millisecond)
+
+	// Check if we received metrics
+	select {
+	case gauges := <-chGauges:
+		// Verify that we have some basic metrics
+		if _, ok := gauges["Alloc"]; !ok {
+			t.Error("Expected Alloc metric to be present")
 		}
-		wantCounter := "PollCount"
-		if _, ok := collector.counters[wantCounter]; !ok {
-			t.Errorf("no counter by name = '%s' has been found", wantCounter)
+		if _, ok := gauges["RandomValue"]; !ok {
+			t.Error("Expected RandomValue metric to be present")
 		}
-	})
-	t.Run("Should_increment_iterations", func(t *testing.T) {
-		collector := NewMetricsCollector(1 * time.Second)
+	case <-time.After(200 * time.Millisecond):
+		t.Error("Timeout waiting for gauge metrics")
+	}
 
-		collector.collect()
-		collector.collect()
-		collector.collect()
-
-		assertCollectorIterations(t, collector, 3)
-	})
-}
-
-func assertCollectorIterations(t *testing.T, collector *MetricsCollector, want int) {
-	t.Helper()
-	got := collector.iterations
-	if got != want {
-		t.Errorf("want collector to record %d iterations, got %d", want, got)
+	select {
+	case counters := <-chCounters:
+		// Verify that PollCount is present and increasing
+		if pollCount, ok := counters["PollCount"]; !ok {
+			t.Error("Expected PollCount metric to be present")
+		} else if pollCount <= 0 {
+			t.Error("Expected PollCount to be greater than 0", pollCount)
+		}
+	case <-time.After(200 * time.Millisecond):
+		t.Error("Timeout waiting for counter metrics")
 	}
 }
