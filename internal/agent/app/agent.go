@@ -5,19 +5,24 @@ import (
 	"github.com/mkolibaba/metrics/internal/agent/config"
 	"github.com/mkolibaba/metrics/internal/agent/http/client"
 	"github.com/mkolibaba/metrics/internal/agent/sender"
-	"log"
+	"github.com/mkolibaba/metrics/internal/common/log"
 )
 
 func Run() {
-	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
-
 	cfg := config.MustLoadAgentConfig()
 
-	c := collector.NewMetricsCollector(cfg.PollInterval)
+	logger := log.New()
+
+	chGauges := make(chan map[string]float64, 1)
+	chCounters := make(chan map[string]int64, 1)
+
+	c := collector.NewMetricsCollector(cfg.PollInterval, logger)
+	go c.StartCollect(chGauges, chCounters)
+
 	serverAPI := client.New(cfg.ServerAddress)
+	metricsSender := sender.NewMetricsSender(serverAPI, cfg.ReportInterval, logger)
 
-	metricsSender := sender.NewMetricsSender(c, serverAPI, cfg.ReportInterval)
-	metricsSender.StartCollectAndSend()
+	logger.Info("running agent")
 
-	select {}
+	metricsSender.StartSend(chGauges, chCounters)
 }

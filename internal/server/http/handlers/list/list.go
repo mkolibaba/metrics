@@ -2,19 +2,22 @@ package list
 
 import (
 	"fmt"
+	"go.uber.org/zap"
 	"io"
-	"log"
 	"net/http"
 	"strings"
 )
+
+const pageTemplate = "<!DOCTYPE html><html><body>%s</body></html>"
 
 type AllMetricsGetter interface {
 	GetGauges() map[string]float64
 	GetCounters() map[string]int64
 }
 
-func New(getter AllMetricsGetter) http.HandlerFunc {
+func New(getter AllMetricsGetter, logger *zap.SugaredLogger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
 		metrics := make([]string, len(getter.GetGauges())+len(getter.GetCounters()))
 		var i int
 		for k, v := range getter.GetGauges() {
@@ -25,9 +28,9 @@ func New(getter AllMetricsGetter) http.HandlerFunc {
 			metrics[i] = fmt.Sprintf("%s: %d", k, v)
 			i++
 		}
-		_, err := io.WriteString(w, strings.Join(metrics, "\n"))
+		_, err := io.WriteString(w, fmt.Sprintf(pageTemplate, strings.Join(metrics, "<br>")))
 		if err != nil {
-			log.Printf("error during processing metrics list request: %v", err)
+			logger.Errorf("error during processing metrics list request: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}
