@@ -2,13 +2,16 @@ package middleware
 
 import (
 	"compress/gzip"
-	"github.com/mkolibaba/metrics/internal/common/logger"
+	"go.uber.org/zap"
 	"io"
 	"net/http"
 	"strings"
 )
 
-var supportsCompressionContentTypes = []string{"text/html", "application/json"}
+var supportedContentTypes = map[string]struct{}{
+	"text/html":        {},
+	"application/json": {},
+}
 
 type gzipWriter struct {
 	http.ResponseWriter
@@ -19,41 +22,39 @@ func (g *gzipWriter) Write(p []byte) (n int, err error) {
 	return g.delegate.Write(p)
 }
 
-func Compressor(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// response writer
-		writer := w
-		if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") && canCompress(r) {
-			gw := gzip.NewWriter(w)
-			defer gw.Close()
+func Compressor(logger *zap.SugaredLogger) func(http.Handler) http.Handler {
+	return func(h http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// response writer
+			writer := w
+			if strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") && canCompress(r) {
+				gw := gzip.NewWriter(w)
+				defer gw.Close()
 
-			writer = &gzipWriter{w, gw}
-			writer.Header().Set("Content-Encoding", "gzip")
-		}
-
-		// request
-		if strings.Contains(r.Header.Get("Content-Encoding"), "gzip") {
-			gr, err := gzip.NewReader(r.Body)
-			if err != nil {
-				logger.Sugared.Error(err)
-				http.Error(w, "failed to decompress request body", http.StatusBadRequest)
-				return
+				writer = &gzipWriter{w, gw}
+				writer.Header().Set("Content-Encoding", "gzip")
 			}
-			defer gr.Close()
 
-			r.Body = gr
-		}
+			// request
+			if strings.Contains(r.Header.Get("Content-Encoding"), "gzip") {
+				gr, err := gzip.NewReader(r.Body)
+				if err != nil {
+					logger.Error(err)
+					http.Error(w, "failed to decompress request body", http.StatusInternalServerError)
+					return
+				}
+				defer gr.Close()
 
-		h.ServeHTTP(writer, r)
-	})
+				r.Body = gr
+			}
+
+			h.ServeHTTP(writer, r)
+		})
+	}
 }
 
 func canCompress(r *http.Request) bool {
 	contentType := r.Header.Get("Accept")
-	for _, t := range supportsCompressionContentTypes {
-		if strings.Contains(contentType, t) {
-			return true
-		}
-	}
-	return false
+	_, ok := supportedContentTypes[contentType]
+	return ok
 }

@@ -1,22 +1,25 @@
 package testutils
 
 import (
+	"github.com/go-chi/chi/v5"
 	"net/http"
 	"net/http/httptest"
 )
 
 type TestServer struct {
-	h http.Handler
+	router chi.Router
 }
 
-func NewTestServer(h http.Handler) *TestServer {
+func NewTestServer(pattern string, h http.Handler) *TestServer {
+	router := chi.NewRouter()
+	router.Handle(pattern, h)
 	return &TestServer{
-		h: h,
+		router: router,
 	}
 }
 
 func (s *TestServer) Execute(r *http.Request) *httptest.ResponseRecorder {
 	recorder := httptest.NewRecorder()
-	s.h.ServeHTTP(recorder, r)
+	s.router.ServeHTTP(recorder, r)
 	return recorder
 }

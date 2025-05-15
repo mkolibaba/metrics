@@ -2,7 +2,7 @@ package list
 
 import (
 	"fmt"
-	"github.com/mkolibaba/metrics/internal/common/logger"
+	"go.uber.org/zap"
 	"io"
 	"net/http"
 	"strings"
@@ -15,7 +15,7 @@ type AllMetricsGetter interface {
 	GetCounters() map[string]int64
 }
 
-func New(getter AllMetricsGetter) http.HandlerFunc {
+func New(getter AllMetricsGetter, logger *zap.SugaredLogger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
 		metrics := make([]string, len(getter.GetGauges())+len(getter.GetCounters()))
@@ -30,7 +30,7 @@ func New(getter AllMetricsGetter) http.HandlerFunc {
 		}
 		_, err := io.WriteString(w, fmt.Sprintf(pageTemplate, strings.Join(metrics, "<br>")))
 		if err != nil {
-			logger.Sugared.Errorf("error during processing metrics list request: %v", err)
+			logger.Errorf("error during processing metrics list request: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}

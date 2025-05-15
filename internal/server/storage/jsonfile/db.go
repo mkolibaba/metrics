@@ -7,7 +7,7 @@ import (
 	"os"
 )
 
-type fileDB struct {
+type jsonFileDB struct {
 	file    *os.File
 	encoder *json.Encoder
 }
@@ -17,13 +17,13 @@ type fileContent struct {
 	Gauges   map[string]float64
 }
 
-func newFileDB(file *os.File) *fileDB {
+func newFileDB(file *os.File) *jsonFileDB {
 	encoder := json.NewEncoder(&tape{file})
 	encoder.SetIndent("", "    ")
-	return &fileDB{file, encoder}
+	return &jsonFileDB{file, encoder}
 }
 
-func (f *fileDB) Save(gauges map[string]float64, counters map[string]int64) error {
+func (f *jsonFileDB) Save(gauges map[string]float64, counters map[string]int64) error {
 	content := fileContent{counters, gauges}
 
 	if err := f.encoder.Encode(content); err != nil {
@@ -37,7 +37,7 @@ func (f *fileDB) Save(gauges map[string]float64, counters map[string]int64) erro
 	return nil
 }
 
-func (f *fileDB) Load() (g map[string]float64, c map[string]int64, err error) {
+func (f *jsonFileDB) Load() (g map[string]float64, c map[string]int64, err error) {
 	stat, err := f.file.Stat()
 	if err != nil {
 		err = fmt.Errorf("error getting file info from file %s: %v", f.file.Name(), err)
@@ -57,7 +57,7 @@ func (f *fileDB) Load() (g map[string]float64, c map[string]int64, err error) {
 	return content.Gauges, content.Counters, nil
 }
 
-func (f *fileDB) Close() {
+func (f *jsonFileDB) Close() {
 	f.file.Close()
 }
 

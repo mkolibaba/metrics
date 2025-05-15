@@ -2,16 +2,23 @@ package jsonfile
 
 import (
 	"fmt"
-	"github.com/mkolibaba/metrics/internal/common/logger"
 	"github.com/mkolibaba/metrics/internal/server/storage/inmemory"
+	"go.uber.org/zap"
 	"os"
 	"time"
 )
 
+type FileDatabase interface {
+	Save(gauges map[string]float64, counters map[string]int64) error
+	Load() (map[string]float64, map[string]int64, error)
+	Close()
+}
+
 type FileStorage struct {
 	*inmemory.MemStorage
-	db          *fileDB
+	db          FileDatabase
 	instantSync bool
+	logger      *zap.SugaredLogger
 }
 
 func (f *FileStorage) UpdateGauge(name string, value float64) float64 {
@@ -28,7 +35,7 @@ func (f *FileStorage) UpdateCounter(name string, value int64) int64 {
 	return f.MemStorage.UpdateCounter(name, value)
 }
 
-func NewFileStorage(path string, storeInterval time.Duration, shouldRestore bool) (*FileStorage, error) {
+func NewFileStorage(path string, storeInterval time.Duration, shouldRestore bool, logger *zap.SugaredLogger) (*FileStorage, error) {
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0666)
 	if err != nil {
 		return nil, fmt.Errorf("error opening file %s: %v", path, err)
@@ -43,6 +50,7 @@ func NewFileStorage(path string, storeInterval time.Duration, shouldRestore bool
 	store := &FileStorage{
 		MemStorage: delegateStore,
 		db:         db,
+		logger:     logger,
 	}
 
 	if storeInterval > 0 {
@@ -63,7 +71,7 @@ func NewFileStorage(path string, storeInterval time.Duration, shouldRestore bool
 
 func (f *FileStorage) save() {
 	if err := f.db.Save(f.GetGauges(), f.GetCounters()); err != nil {
-		logger.Sugared.Errorf("error saving metrics: %v", err)
+		f.logger.Errorf("error saving metrics: %v", err)
 	}
 }
 
@@ -71,7 +79,7 @@ func (f *FileStorage) Close() {
 	f.db.Close()
 }
 
-func restore(db *fileDB, store *inmemory.MemStorage) error {
+func restore(db FileDatabase, store *inmemory.MemStorage) error {
 	gauges, counters, err := db.Load()
 	if err != nil {
 		return err
@@ -87,7 +95,7 @@ func restore(db *fileDB, store *inmemory.MemStorage) error {
 	return nil
 }
 
-func newUnderlyingStorage(db *fileDB, shouldRestore bool) (*inmemory.MemStorage, error) {
+func newUnderlyingStorage(db FileDatabase, shouldRestore bool) (*inmemory.MemStorage, error) {
 	store := inmemory.NewMemStorage()
 	if shouldRestore {
 		if err := restore(db, store); err != nil {

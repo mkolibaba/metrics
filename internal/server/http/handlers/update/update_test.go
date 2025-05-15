@@ -1,11 +1,10 @@
-package update_test
+package update
 
 import (
 	"fmt"
-	"github.com/mkolibaba/metrics/internal/server/http/router"
 	"github.com/mkolibaba/metrics/internal/server/storage/inmemory"
-	"github.com/mkolibaba/metrics/internal/server/storage/mocks"
 	"github.com/mkolibaba/metrics/internal/server/testutils"
+	"go.uber.org/zap"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -52,7 +51,7 @@ func TestUpdateHandlerShouldReturnCorrectStatus(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(fmt.Sprintf("POST_%s_should_return_response_with_status_%d", c.url, c.wantStatus), func(t *testing.T) {
-			store := &mocks.MetricsStorageMock{}
+			store := &MetricsUpdaterMock{}
 			response := sendUpdateRequest(t, store, c.url)
 
 			result := response.Result()
@@ -70,7 +69,7 @@ func TestUpdateHandlerCallsStoreCorrectly(t *testing.T) {
 		countersValuesPassed []int64
 	}
 
-	assertState := func(t *testing.T, store *mocks.MetricsStorageMock, want want) {
+	assertState := func(t *testing.T, store *MetricsUpdaterMock, want want) {
 		store.AssertCalled(t, want.calls)
 		store.AssertNames(t, want.namesPassed)
 		store.AssertGaugesValues(t, want.gaugesValuesPassed)
@@ -78,14 +77,14 @@ func TestUpdateHandlerCallsStoreCorrectly(t *testing.T) {
 	}
 
 	t.Run("Should_call_store_exactly_1_time", func(t *testing.T) {
-		store := &mocks.MetricsStorageMock{}
+		store := &MetricsUpdaterMock{}
 
 		sendUpdateRequest(t, store, "/update/counter/my/12")
 
 		assertState(t, store, want{1, []string{"my"}, []float64{}, []int64{12}})
 	})
 	t.Run("Should_call_store_exactly_2_times", func(t *testing.T) {
-		store := &mocks.MetricsStorageMock{}
+		store := &MetricsUpdaterMock{}
 
 		sendUpdateRequest(t, store, "/update/counter/my/12")
 		sendUpdateRequest(t, store, "/update/counter/my/12")
@@ -93,7 +92,7 @@ func TestUpdateHandlerCallsStoreCorrectly(t *testing.T) {
 		assertState(t, store, want{2, []string{"my", "my"}, []float64{}, []int64{12, 12}})
 	})
 	t.Run("Should_correctly_process_all_requests", func(t *testing.T) {
-		store := &mocks.MetricsStorageMock{}
+		store := &MetricsUpdaterMock{}
 
 		sendUpdateRequest(t, store, "/update/counter/a/1")
 		sendUpdateRequest(t, store, "/update/counter/b/5")
@@ -104,7 +103,7 @@ func TestUpdateHandlerCallsStoreCorrectly(t *testing.T) {
 		assertState(t, store, want{5, []string{"a", "b", "d", "e", "c"}, []float64{3, 4}, []int64{1, 5, 2}})
 	})
 	t.Run("Should_not_call_store_when_request_is_invalid", func(t *testing.T) {
-		store := &mocks.MetricsStorageMock{}
+		store := &MetricsUpdaterMock{}
 
 		sendUpdateRequest(t, store, "/update/counter/abc/1.2")
 		sendUpdateRequest(t, store, "/update/gauge/abc/blabla")
@@ -165,7 +164,7 @@ func TestSendMetricJSON(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			store := &mocks.MetricsStorageMock{}
+			store := &MetricsUpdaterMock{}
 
 			response := sendUpdateRequestJSON(t, store, c.body)
 
@@ -217,19 +216,19 @@ func TestSendMetricResponseJSON(t *testing.T) {
 	})
 }
 
-func sendUpdateRequestJSON(t *testing.T, store router.MetricsStorage, body string) *httptest.ResponseRecorder {
+func sendUpdateRequestJSON(t *testing.T, updater MetricsUpdater, body string) *httptest.ResponseRecorder {
 	t.Helper()
 
 	request := httptest.NewRequest(http.MethodPost, "/update/", strings.NewReader(body))
 	request.Header.Set("Content-Type", "application/json")
-	server := testutils.NewTestServer(router.New(store))
+	server := testutils.NewTestServer("POST /update/", NewJSON(updater, zap.S()))
 	return server.Execute(request)
 }
 
-func sendUpdateRequest(t *testing.T, store router.MetricsStorage, url string) *httptest.ResponseRecorder {
+func sendUpdateRequest(t *testing.T, updater MetricsUpdater, url string) *httptest.ResponseRecorder {
 	t.Helper()
 
 	request := httptest.NewRequest(http.MethodPost, url, nil)
-	server := testutils.NewTestServer(router.New(store))
+	server := testutils.NewTestServer("POST /update/{type}/{name}/{value}", New(updater))
 	return server.Execute(request)
 }

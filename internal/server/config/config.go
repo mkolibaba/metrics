@@ -2,7 +2,7 @@ package config
 
 import (
 	"flag"
-	"github.com/mkolibaba/metrics/internal/common/logger"
+	"log"
 	"os"
 	"strconv"
 	"time"
@@ -46,7 +46,7 @@ func MustLoadServerConfig() *ServerConfig {
 func mustStringToInt(s string) int {
 	i, err := strconv.Atoi(s)
 	if err != nil {
-		logger.Sugared.Fatalf("error parsing config value: %v", err)
+		log.Fatalf("error parsing config value: %v", err)
 	}
 	return i
 }
@@ -54,7 +54,7 @@ func mustStringToInt(s string) int {
 func mustStringToBool(s string) bool {
 	b, err := strconv.ParseBool(s)
 	if err != nil {
-		logger.Sugared.Fatalf("error parsing config value: %v", err)
+		log.Fatalf("error parsing config value: %v", err)
 	}
 	return b
 }

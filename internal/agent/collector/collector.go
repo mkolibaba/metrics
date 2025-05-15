@@ -1,6 +1,7 @@
 package collector
 
 import (
+	"go.uber.org/zap"
 	"math/rand"
 	"runtime"
 	"time"
@@ -9,11 +10,13 @@ import (
 type MetricsCollector struct {
 	iterations   int
 	pollInterval time.Duration
+	logger       *zap.SugaredLogger
 }
 
-func NewMetricsCollector(pollInterval time.Duration) *MetricsCollector {
+func NewMetricsCollector(pollInterval time.Duration, logger *zap.SugaredLogger) *MetricsCollector {
 	return &MetricsCollector{
 		pollInterval: pollInterval,
+		logger:       logger,
 	}
 }
 
@@ -24,6 +27,7 @@ func (m *MetricsCollector) StartCollect(chGauges chan<- map[string]float64, chCo
 		gauges := m.collect()
 		chGauges <- gauges
 		chCounters <- map[string]int64{"PollCount": int64(m.iterations)}
+		m.logger.Debug("metrics has been collected")
 	}
 	close(chGauges)
 	close(chCounters)

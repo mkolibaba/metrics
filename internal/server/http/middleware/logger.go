@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"github.com/mkolibaba/metrics/internal/common/logger"
+	"go.uber.org/zap"
 	"net/http"
 	"time"
 )
@@ -27,20 +27,22 @@ func (r *loggingResponseWriter) WriteHeader(statusCode int) {
 	r.responseData.status = statusCode
 }
 
-func Logger(h http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		writerWrapper := loggingResponseWriter{w, &responseData{status: 200}}
+func Logger(logger *zap.SugaredLogger) func(http.Handler) http.Handler {
+	return func(h http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			writerWrapper := loggingResponseWriter{w, &responseData{status: 200}}
 
-		start := time.Now()
-		h.ServeHTTP(&writerWrapper, r)
-		duration := time.Since(start)
+			start := time.Now()
+			h.ServeHTTP(&writerWrapper, r)
+			duration := time.Since(start)
 
-		logger.Sugared.Infoln(
-			"uri", r.RequestURI,
-			"method", r.Method,
-			"status", writerWrapper.responseData.status,
-			"duration", duration,
-			"size", writerWrapper.responseData.size,
-		)
-	})
+			logger.Infoln(
+				"uri", r.RequestURI,
+				"method", r.Method,
+				"status", writerWrapper.responseData.status,
+				"duration", duration,
+				"size", writerWrapper.responseData.size,
+			)
+		})
+	}
 }

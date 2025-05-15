@@ -5,9 +5,9 @@ import (
 	"errors"
 	"github.com/go-chi/chi/v5"
 	"github.com/mkolibaba/metrics/internal/common/http/model"
-	"github.com/mkolibaba/metrics/internal/common/logger"
 	"github.com/mkolibaba/metrics/internal/server/http/handlers"
 	"github.com/mkolibaba/metrics/internal/server/storage"
+	"go.uber.org/zap"
 	"io"
 	"net/http"
 	"strconv"
@@ -18,11 +18,11 @@ type MetricsGetter interface {
 	GetCounter(name string) (int64, error)
 }
 
-func New(getter MetricsGetter) http.HandlerFunc {
+func New(getter MetricsGetter, logger *zap.SugaredLogger) http.HandlerFunc {
 	writeResponse := func(w http.ResponseWriter, text string) {
 		_, err := io.WriteString(w, text)
 		if err != nil {
-			logger.Sugared.Errorf("error during processing metrics read request: %v", err)
+			logger.Errorf("error during processing metrics read request: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 	}

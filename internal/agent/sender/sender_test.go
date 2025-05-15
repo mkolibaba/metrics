@@ -1,6 +1,7 @@
 package sender
 
 import (
+	"go.uber.org/zap"
 	"testing"
 	"time"
 
@@ -16,12 +17,11 @@ func TestStartSend(t *testing.T) {
 	chCounters := make(chan map[string]int64, 1)
 
 	// Create sender with short report interval for testing
-	sender := NewMetricsSender(serverAPI, 100*time.Millisecond)
+	sender := NewMetricsSender(serverAPI, 100*time.Millisecond, zap.S())
 
 	// Start sending in a goroutine
-	errChan := make(chan error, 1)
 	go func() {
-		errChan <- sender.StartSend(chGauges, chCounters)
+		sender.StartSend(chGauges, chCounters)
 	}()
 
 	// Send test metrics
@@ -41,23 +41,5 @@ func TestStartSend(t *testing.T) {
 	}
 	if serverAPI.CounterCalls != 1 {
 		t.Errorf("expected 1 counter call, got %d", serverAPI.CounterCalls)
-	}
-
-	// Test error handling by making the mock return an error
-	serverAPI.ShouldError = true
-	chGauges <- testGauges
-	chCounters <- testCounters
-
-	// Wait for error to be processed
-	time.Sleep(150 * time.Millisecond)
-
-	// Check if error was returned
-	select {
-	case err := <-errChan:
-		if err == nil {
-			t.Error("expected error, got nil")
-		}
-	default:
-		t.Error("expected error to be returned")
 	}
 }

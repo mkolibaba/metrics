@@ -2,7 +2,7 @@ package config
 
 import (
 	"flag"
-	"github.com/mkolibaba/metrics/internal/common/logger"
+	"log"
 	"os"
 	"strconv"
 	"time"
@@ -42,7 +42,7 @@ func MustLoadAgentConfig() *AgentConfig {
 func stringToDuration(s string) time.Duration {
 	i, err := strconv.Atoi(s)
 	if err != nil {
-		logger.Sugared.Fatalf("error parsing config value: %v", err)
+		log.Fatalf("error parsing config value: %v", err)
 	}
 	return time.Duration(i) * time.Second
 }

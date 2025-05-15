@@ -1,0 +1,133 @@
+# https://taskfile.dev
+
+version: '3'
+
+vars:
+  PORT: 12345
+  BIN_AGENT_PATH: bin/agent
+  BIN_SERVER_PATH: bin/server
+  BIN_STATICTEST_PATH: bin/statictest
+  BIN_METRICSTEST_PATH: bin/metricstest
+
+tasks:
+  all-tests:
+    cmds:
+      - task: tests
+      - task: run-statictest
+      - task: run-metricstest
+
+  download-statictest:
+    desc: Download statictest
+    status:
+      - '[ -e {{.BIN_STATICTEST_PATH}} ]'
+    cmds:
+      - echo 'Downloading statictest to {{.BIN_STATICTEST_PATH}}'
+      - | 
+        curl -s https://api.github.com/repos/yandex-practicum/go-autotests/releases/latest \
+        | grep "browser_download_url.*statictest\"" \
+        | cut -d : -f 2,3 \
+        | tr -d \" \
+        | wget -qi - -O {{.BIN_STATICTEST_PATH}}
+
+  download-metricstest:
+    desc: Download metricstest
+    status:
+      - '[ -e {{.BIN_METRICSTEST_PATH}} ]'
+    cmds:
+      - echo 'Downloading metricstest to {{.BIN_METRICSTEST_PATH}}'
+      - |
+        curl -s https://api.github.com/repos/yandex-practicum/go-autotests/releases/latest \
+        | grep "browser_download_url.*metricstest\"" \
+        | cut -d : -f 2,3 \
+        | tr -d \" \
+        | wget -qi - -O {{.BIN_METRICSTEST_PATH}}
+
+  run-statictest:
+    deps:
+      - download-statictest
+    cmds:
+      - go vet -vettool={{.BIN_STATICTEST_PATH}} ./...
+
+  run-metricstest:
+    deps:
+      - download-metricstest
+    cmds:
+      - task: build-apps
+      - task: iter1
+      - task: iter2
+      - task: iter3
+      - task: iter4
+      - task: iter5
+      - task: iter6
+      - task: iter7
+      - task: iter8
+      - task: iter9
+      - rm {{.BIN_AGENT_PATH}}
+      - rm {{.BIN_SERVER_PATH}}
+
+  tests:
+    cmds:
+      - go test ./...
+
+  build-apps:
+    deps:
+      - build-agent
+      - build-server
+
+  build-agent:
+    cmds:
+      - go build -buildvcs=false -o {{.BIN_AGENT_PATH}} cmd/agent/main.go
+
+  build-server:
+    cmds:
+      - go build -buildvcs=false -o {{.BIN_SERVER_PATH}} cmd/server/main.go
+
+  iter1:
+    internal: true
+    cmds:
+      - ./bin/metricstest -test.v -test.run=^TestIteration1$ -binary-path={{.BIN_SERVER_PATH}}
+
+  iter2:
+    internal: true
+    cmds:
+      - ./bin/metricstest -test.v -test.run=^TestIteration2[AB]*$ -agent-binary-path={{.BIN_AGENT_PATH}} -source-path=.
+
+  iter3:
+    internal: true
+    cmds:
+      - ./bin/metricstest -test.v -test.run=^TestIteration3[AB]*$ -binary-path={{.BIN_SERVER_PATH}} -agent-binary-path={{.BIN_AGENT_PATH}} -source-path=.
+
+  iter4:
+    internal: true
+    cmds:
+      - ./bin/metricstest -test.v -test.run=^TestIteration4$ -binary-path={{.BIN_SERVER_PATH}} -agent-binary-path={{.BIN_AGENT_PATH}} -server-port={{.PORT}} -source-path=.
+
+  iter5:
+    internal: true
+    env:
+      ADDRESS: localhost:{{.PORT}}
+    cmds:
+      - ./bin/metricstest -test.v -test.run=^TestIteration5$ -binary-path={{.BIN_SERVER_PATH}} -agent-binary-path={{.BIN_AGENT_PATH}} -server-port={{.PORT}} -source-path=.
+
+  iter6:
+    internal: true
+    cmds:
+      - ./bin/metricstest -test.v -test.run=^TestIteration6$ -source-path=.
+
+  iter7:
+    internal: true
+    cmds:
+      - ./bin/metricstest -test.v -test.run=^TestIteration7$ -binary-path={{.BIN_SERVER_PATH}} -agent-binary-path={{.BIN_AGENT_PATH}} -source-path=.
+
+  iter8:
+    internal: true
+    cmds:
+      - ./bin/metricstest -test.v -test.run=^TestIteration8$ -binary-path={{.BIN_SERVER_PATH}} -agent-binary-path={{.BIN_AGENT_PATH}} -server-port={{.PORT}} -source-path=.
+
+  iter9:
+    internal: true
+    vars:
+      JSON_FILE: db.json
+    cmds:
+      - ./bin/metricstest -test.v -test.run=^TestIteration9$ -binary-path={{.BIN_SERVER_PATH}} -agent-binary-path={{.BIN_AGENT_PATH}} -server-port={{.PORT}} -source-path=. -file-storage-path={{.JSON_FILE}}
+      - rm {{.JSON_FILE}}

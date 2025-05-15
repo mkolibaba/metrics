@@ -4,6 +4,7 @@ import (
 	"compress/gzip"
 	"fmt"
 	"github.com/mkolibaba/metrics/internal/server/testutils"
+	"go.uber.org/zap"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -67,7 +68,7 @@ func prepareAndSendRequest(contentType, responseBody string) *httptest.ResponseR
 
 	recorder := httptest.NewRecorder()
 
-	Compressor(handler).ServeHTTP(recorder, request)
+	Compressor(zap.S())(handler).ServeHTTP(recorder, request)
 
 	return recorder
 }

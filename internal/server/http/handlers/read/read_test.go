@@ -1,26 +1,26 @@
-package read_test
+package read
 
 import (
 	"fmt"
-	"github.com/mkolibaba/metrics/internal/server/http/router"
 	"github.com/mkolibaba/metrics/internal/server/storage/inmemory"
 	"github.com/mkolibaba/metrics/internal/server/testutils"
+	"go.uber.org/zap"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 )
 
-type sendRequestFunc func(store router.MetricsStorage, tp, name string) *httptest.ResponseRecorder
+type sendRequestFunc func(getter MetricsGetter, tp, name string) *httptest.ResponseRecorder
 
 func TestReadText(t *testing.T) {
-	sendRequest := func(store router.MetricsStorage, tp, name string) *httptest.ResponseRecorder {
+	sendRequest := func(getter MetricsGetter, tp, name string) *httptest.ResponseRecorder {
 		t.Helper()
 
 		url := fmt.Sprintf("/value/%s/%s", tp, name)
 		request := httptest.NewRequest(http.MethodGet, url, nil)
 
-		server := testutils.NewTestServer(router.New(store))
+		server := testutils.NewTestServer("GET /value/{type}/{name}", New(getter, zap.S()))
 		return server.Execute(request)
 	}
 
@@ -28,13 +28,13 @@ func TestReadText(t *testing.T) {
 }
 
 func TestReadJSON(t *testing.T) {
-	sendRequest := func(store router.MetricsStorage, tp, name string) *httptest.ResponseRecorder {
+	sendRequest := func(getter MetricsGetter, tp, name string) *httptest.ResponseRecorder {
 		t.Helper()
 
 		request := httptest.NewRequest(http.MethodPost, "/value/", strings.NewReader(createRequestBodyJSON(name, tp)))
 		request.Header.Set("Content-Type", "application/json")
 
-		server := testutils.NewTestServer(router.New(store))
+		server := testutils.NewTestServer("POST /value/", NewJSON(getter))
 		return server.Execute(request)
 	}
 

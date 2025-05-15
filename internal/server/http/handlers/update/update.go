@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"github.com/go-chi/chi/v5"
 	"github.com/mkolibaba/metrics/internal/common/http/model"
-	"github.com/mkolibaba/metrics/internal/common/logger"
 	"github.com/mkolibaba/metrics/internal/server/http/handlers"
+	"go.uber.org/zap"
 	"net/http"
 	"strconv"
 )
@@ -42,7 +42,7 @@ func New(updater MetricsUpdater) http.HandlerFunc {
 	}
 }
 
-func NewJSON(updater MetricsUpdater) http.HandlerFunc {
+func NewJSON(updater MetricsUpdater, logger *zap.SugaredLogger) http.HandlerFunc {
 	writeResponse := func(w http.ResponseWriter, t, name string, counter *int64, gauge *float64) {
 		responseBody := model.Metrics{
 			ID:    name,
@@ -63,7 +63,7 @@ func NewJSON(updater MetricsUpdater) http.HandlerFunc {
 
 		requestBody := &model.Metrics{}
 		if err := json.NewDecoder(r.Body).Decode(requestBody); err != nil {
-			logger.Sugared.Errorf("can not decode request body: %v", err)
+			logger.Errorf("can not decode request body: %v", err)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}

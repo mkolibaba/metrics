@@ -1,9 +1,9 @@
-package list_test
+package list
 
 import (
-	"github.com/mkolibaba/metrics/internal/server/http/router"
 	"github.com/mkolibaba/metrics/internal/server/storage/inmemory"
 	"github.com/mkolibaba/metrics/internal/server/testutils"
+	"go.uber.org/zap"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -40,10 +40,10 @@ func TestList(t *testing.T) {
 	})
 }
 
-func sendRequest(t *testing.T, store router.MetricsStorage) *httptest.ResponseRecorder {
+func sendRequest(t *testing.T, getter AllMetricsGetter) *httptest.ResponseRecorder {
 	t.Helper()
 
 	request := httptest.NewRequest(http.MethodGet, "/", nil)
-	server := testutils.NewTestServer(router.New(store))
+	server := testutils.NewTestServer("GET /", New(getter, zap.S()))
 	return server.Execute(request)
 }
