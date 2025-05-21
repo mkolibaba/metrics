@@ -1,10 +1,9 @@
-package list_test
+package list
 
 import (
-	"github.com/go-resty/resty/v2"
-	"github.com/mkolibaba/metrics/internal/server/http/router"
 	"github.com/mkolibaba/metrics/internal/server/storage/inmemory"
 	"github.com/mkolibaba/metrics/internal/server/testutils"
+	"go.uber.org/zap"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -16,8 +15,10 @@ func TestList(t *testing.T) {
 		store := inmemory.NewMemStorage()
 		response := sendRequest(t, store)
 
-		testutils.AssertResponseStatusCode(t, 200, response)
-		testutils.AssertResponseBody(t, "", response)
+		result := response.Result()
+		defer result.Body.Close()
+		testutils.AssertResponseStatusCode(t, 200, result.StatusCode)
+		testutils.AssertResponseBody(t, "<!DOCTYPE html><html><body></body></html>", result.Body)
 	})
 	t.Run("Should_return_list_of_metrics", func(t *testing.T) {
 		store := inmemory.NewMemStorage()
@@ -26,11 +27,11 @@ func TestList(t *testing.T) {
 
 		response := sendRequest(t, store)
 
-		want := "gauge1: 34.560\ncounter1: 12"
+		want := "<!DOCTYPE html><html><body>gauge1: 34.560<br>counter1: 12</body></html>"
 
-		testutils.AssertResponseBody(t, want, response)
+		testutils.AssertResponseBody(t, want, response.Body)
 
-		wantContentType := "text/plain"
+		wantContentType := "text/html"
 		gotContentType := response.Header().Get("Content-Type")
 
 		if !strings.Contains(gotContentType, wantContentType) {
@@ -39,18 +40,10 @@ func TestList(t *testing.T) {
 	})
 }
 
-func sendRequest(t *testing.T, store router.MetricsStorage) *resty.Response {
+func sendRequest(t *testing.T, getter AllMetricsGetter) *httptest.ResponseRecorder {
 	t.Helper()
 
-	srv := httptest.NewServer(router.New(store))
-	defer srv.Close()
-
-	request := resty.New().R()
-	request.Method = http.MethodGet
-	request.URL = srv.URL + "/"
-
-	response, err := request.Send()
-	testutils.AssertNoError(t, err)
-
-	return response
+	request := httptest.NewRequest(http.MethodGet, "/", nil)
+	server := testutils.NewTestServer("GET /", New(getter, zap.S()))
+	return server.Execute(request)
 }

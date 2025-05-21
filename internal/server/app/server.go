@@ -1,23 +1,33 @@
 package app
 
 import (
+	"github.com/mkolibaba/metrics/internal/common/log"
 	"github.com/mkolibaba/metrics/internal/server/config"
 	"github.com/mkolibaba/metrics/internal/server/http/router"
-	"github.com/mkolibaba/metrics/internal/server/storage/inmemory"
-	"log"
+	"github.com/mkolibaba/metrics/internal/server/storage/jsonfile"
+	"go.uber.org/zap"
 	"net/http"
 )
 
 func Run() {
-	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
+	cfg := config.MustLoadServerConfig()
 
-	serverAddress := config.MustLoadServerConfig().ServerAddress
+	logger := log.New()
 
-	store := inmemory.NewMemStorage()
-	r := router.New(store)
+	store := mustCreateFileStorage(cfg, logger)
+	defer store.Close()
+	r := router.New(store, logger)
 
-	log.Printf("Running server on %s", serverAddress)
-	if err := http.ListenAndServe(serverAddress, r); err != nil {
-		log.Fatal(err)
+	logger.Infof("running server on %s", cfg.ServerAddress)
+	if err := http.ListenAndServe(cfg.ServerAddress, r); err != nil {
+		logger.Fatal(err)
 	}
+}
+
+func mustCreateFileStorage(cfg *config.ServerConfig, logger *zap.SugaredLogger) *jsonfile.FileStorage {
+	store, err := jsonfile.NewFileStorage(cfg.FileStoragePath, cfg.StoreInterval, cfg.Restore, logger)
+	if err != nil {
+		logger.Fatalf("error creating file storage: %v", err)
+	}
+	return store
 }

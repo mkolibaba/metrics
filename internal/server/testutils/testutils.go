@@ -1,7 +1,14 @@
 package testutils
 
 import (
+	"encoding/json"
+	"fmt"
+	"io"
+	"maps"
+	"strconv"
+	"strings"
 	"testing"
+	"testing/iotest"
 )
 
 func AssertNoError(t *testing.T, err error) {
@@ -11,21 +18,48 @@ func AssertNoError(t *testing.T, err error) {
 	}
 }
 
-func AssertResponseStatusCode(t *testing.T, want int, got interface {
-	StatusCode() int
-}) {
+func AssertResponseStatusCode(t *testing.T, want int, got int) {
 	t.Helper()
-	if got.StatusCode() != want {
-		t.Errorf("did not get correct response status code: want %d, got %d", want, got.StatusCode())
+	if got != want {
+		t.Errorf("did not get correct response status code: want %d, got %d", want, got)
 	}
 }
 
-func AssertResponseBody(t *testing.T, want string, got interface {
-	Body() []byte
-}) {
+func AssertResponseBody(t *testing.T, want string, got io.Reader) {
 	t.Helper()
-	body := string(got.Body())
-	if body != want {
-		t.Errorf("did not get correct response body: want '%s' got '%s'", want, body)
+
+	if err := iotest.TestReader(got, []byte(want)); err != nil {
+		t.Errorf("did not get correct response body: %v", err)
 	}
+}
+
+func AssertResponseBodyJSON(t *testing.T, want string, got io.Reader) {
+	t.Helper()
+
+	bytes, err := io.ReadAll(got)
+	AssertNoError(t, err)
+
+	if len(bytes) == 0 && len(want) == 0 {
+		return
+	}
+	gotMap := make(map[string]any)
+	if err := json.Unmarshal(bytes, &gotMap); err != nil {
+		t.Errorf("error during parse got: %v", err)
+	}
+	wantMap := make(map[string]any)
+	if err := json.NewDecoder(strings.NewReader(want)).Decode(&wantMap); err != nil {
+		t.Errorf("error during parse want: %v", err)
+	}
+	if !maps.Equal(gotMap, wantMap) {
+		t.Errorf("did not get correct response body: want '%s' got '%s'", wantMap, gotMap)
+	}
+}
+
+func CreateGaugeResponseBodyJSON(id string, val float64) string {
+	v := strconv.FormatFloat(val, 'f', -1, 64)
+	return fmt.Sprintf("{\"id\": \"%s\", \"type\": \"gauge\", \"value\": %s}", id, v)
+}
+
+func CreateCounterResponseBodyJSON(id string, val int64) string {
+	return fmt.Sprintf("{\"id\": \"%s\", \"type\": \"counter\", \"delta\": %d}", id, val)
 }
