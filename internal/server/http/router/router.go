@@ -1,8 +1,10 @@
 package router
 
 import (
+	"database/sql"
 	"github.com/go-chi/chi/v5"
 	"github.com/mkolibaba/metrics/internal/server/http/handlers/list"
+	"github.com/mkolibaba/metrics/internal/server/http/handlers/ping"
 	"github.com/mkolibaba/metrics/internal/server/http/handlers/read"
 	"github.com/mkolibaba/metrics/internal/server/http/handlers/update"
 	"github.com/mkolibaba/metrics/internal/server/http/middleware"
@@ -15,7 +17,7 @@ type MetricsStorage interface {
 	update.MetricsUpdater
 }
 
-func New(store MetricsStorage, logger *zap.SugaredLogger) chi.Router {
+func New(store MetricsStorage, db *sql.DB, logger *zap.SugaredLogger) chi.Router {
 	r := chi.NewRouter()
 
 	r.Use(middleware.Logger(logger))
@@ -27,6 +29,8 @@ func New(store MetricsStorage, logger *zap.SugaredLogger) chi.Router {
 
 	r.Post("/value/", read.NewJSON(store))
 	r.Post("/update/", update.NewJSON(store, logger))
+
+	r.Get("/ping", ping.New(db))
 
 	return r
 }

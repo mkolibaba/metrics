@@ -13,6 +13,7 @@ type ServerConfig struct {
 	StoreInterval   time.Duration
 	FileStoragePath string
 	Restore         bool
+	DatabaseDSN     string
 }
 
 func MustLoadServerConfig() *ServerConfig {
@@ -23,6 +24,7 @@ func MustLoadServerConfig() *ServerConfig {
 	flag.IntVar(&storeIntervalSeconds, "i", 300, "store interval")
 	flag.StringVar(&cfg.FileStoragePath, "f", "db.json", "file storage path")
 	flag.BoolVar(&cfg.Restore, "r", true, "restore")
+	flag.StringVar(&cfg.DatabaseDSN, "d", "postgres://postgres:postgres@localhost:5432/metrics", "server address")
 	flag.Parse()
 
 	if address, ok := os.LookupEnv("ADDRESS"); ok {
@@ -36,6 +38,9 @@ func MustLoadServerConfig() *ServerConfig {
 	}
 	if v, ok := os.LookupEnv("RESTORE"); ok {
 		cfg.Restore = mustStringToBool(v)
+	}
+	if v, ok := os.LookupEnv("DATABASE_DSN"); ok {
+		cfg.DatabaseDSN = v
 	}
 
 	cfg.StoreInterval = time.Duration(storeIntervalSeconds) * time.Second
