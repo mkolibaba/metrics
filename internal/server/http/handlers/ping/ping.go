@@ -1,15 +1,20 @@
 package ping
 
 import (
-	"database/sql"
+	"context"
 	"net/http"
 )
 
-func New(db *sql.DB) http.HandlerFunc {
+type Pinger interface {
+	PingContext(ctx context.Context) error
+}
+
+func New(pinger Pinger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		err := db.PingContext(r.Context())
+		err := pinger.PingContext(r.Context())
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
+			return
 		}
 	}
 }
