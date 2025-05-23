@@ -8,6 +8,7 @@ import (
 	"github.com/mkolibaba/metrics/internal/server/http/router"
 	"github.com/mkolibaba/metrics/internal/server/storage/jsonfile"
 	"go.uber.org/zap"
+	stdlog "log"
 	"net/http"
 )
 
@@ -30,9 +31,12 @@ func Run() {
 	}
 }
 
-// TODO
 func mustCreateConfig() *config.ServerConfig {
-	return config.MustLoadServerConfig()
+	cfg, err := config.LoadServerConfig()
+	if err != nil {
+		stdlog.Fatalf("error creating config: %v", err)
+	}
+	return cfg
 }
 
 func mustCreateFileStorage(cfg *config.ServerConfig, logger *zap.SugaredLogger) *jsonfile.FileStorage {
