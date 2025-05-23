@@ -6,10 +6,11 @@ import (
 	"github.com/mkolibaba/metrics/internal/agent/http/client"
 	"github.com/mkolibaba/metrics/internal/agent/sender"
 	"github.com/mkolibaba/metrics/internal/common/log"
+	stdlog "log"
 )
 
 func Run() {
-	cfg := config.MustLoadAgentConfig()
+	cfg := mustCreateConfig()
 
 	logger := log.New()
 
@@ -25,4 +26,12 @@ func Run() {
 	logger.Info("running agent")
 
 	metricsSender.StartSend(chGauges, chCounters)
+}
+
+func mustCreateConfig() *config.AgentConfig {
+	cfg, err := config.LoadAgentConfig()
+	if err != nil {
+		stdlog.Fatalf("error creating config: %v", err)
+	}
+	return cfg
 }
