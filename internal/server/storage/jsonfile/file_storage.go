@@ -70,7 +70,18 @@ func NewFileStorage(path string, storeInterval time.Duration, shouldRestore bool
 }
 
 func (f *FileStorage) save() {
-	if err := f.db.Save(f.GetGauges(), f.GetCounters()); err != nil {
+	gauges, err := f.GetGauges()
+	if err != nil {
+		f.logger.Errorf("error retrieving gauges for saving: %v", err)
+		return
+	}
+	counters, err := f.GetCounters()
+	if err != nil {
+		f.logger.Errorf("error retrieving counters for saving: %v", err)
+		return
+	}
+
+	if err := f.db.Save(gauges, counters); err != nil {
 		f.logger.Errorf("error saving metrics: %v", err)
 	}
 }
@@ -86,10 +97,16 @@ func restore(db FileDatabase, store *inmemory.MemStorage) error {
 	}
 
 	for k, v := range counters {
-		store.UpdateCounter(k, v)
+		_, err := store.UpdateCounter(k, v)
+		if err != nil {
+			return err
+		}
 	}
 	for k, v := range gauges {
-		store.UpdateGauge(k, v)
+		_, err := store.UpdateGauge(k, v)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

@@ -12,62 +12,62 @@ type PostgresStorage struct {
 	logger *zap.SugaredLogger
 }
 
-func (p *PostgresStorage) GetGauges() map[string]float64 {
-	res := make(map[string]float64)
+func (p *PostgresStorage) GetGauges() (map[string]float64, error) {
 	stmt, err := p.db.Prepare("SELECT id, value FROM gauge")
 	if err != nil {
-		return res
+		return nil, err
 	}
 
 	rows, err := stmt.Query()
 	if err != nil {
-		return res
+		return nil, err
 	}
 
+	res := make(map[string]float64)
 	for rows.Next() {
 		var id string
 		var value float64
 		err := rows.Scan(&id, &value)
 		if err != nil {
-			return res
+			return nil, err
 		}
 		res[id] = value
 	}
 
 	if rows.Err() != nil {
-		return res
+		return nil, err
 	}
 
-	return res
+	return res, nil
 }
 
-func (p *PostgresStorage) GetCounters() map[string]int64 {
-	res := make(map[string]int64)
+func (p *PostgresStorage) GetCounters() (map[string]int64, error) {
 	stmt, err := p.db.Prepare("SELECT id, delta FROM counter")
 	if err != nil {
-		return res
+		return nil, err
 	}
 
 	rows, err := stmt.Query()
 	if err != nil {
-		return res
+		return nil, err
 	}
 
+	res := make(map[string]int64)
 	for rows.Next() {
 		var id string
 		var delta int64
 		err := rows.Scan(&id, &delta)
 		if err != nil {
-			return res
+			return nil, err
 		}
 		res[id] = delta
 	}
 
 	if rows.Err() != nil {
-		return res
+		return nil, err
 	}
 
-	return res
+	return res, nil
 }
 
 func (p *PostgresStorage) GetGauge(name string) (float64, error) {

@@ -7,12 +7,12 @@ type MemStorage struct {
 	counters map[string]int64
 }
 
-func (m *MemStorage) GetGauges() map[string]float64 {
-	return m.gauges
+func (m *MemStorage) GetGauges() (map[string]float64, error) {
+	return m.gauges, nil
 }
 
-func (m *MemStorage) GetCounters() map[string]int64 {
-	return m.counters
+func (m *MemStorage) GetCounters() (map[string]int64, error) {
+	return m.counters, nil
 }
 
 func (m *MemStorage) GetGauge(name string) (float64, error) {
