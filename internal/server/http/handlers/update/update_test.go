@@ -190,7 +190,7 @@ func TestSendMetricResponseJSON(t *testing.T) {
 	})
 	t.Run("should_return_updated_counter", func(t *testing.T) {
 		store := inmemory.NewMemStorage()
-		store.UpdateCounter("counter1", 12)
+		store.UpdateCounter(t.Context(), "counter1", 12)
 		body := "{\"id\": \"counter1\",\"type\": \"counter\",\"delta\": 12}"
 
 		response := sendUpdateRequestJSON(t, store, body)
@@ -207,7 +207,7 @@ func TestSendMetricResponseJSON(t *testing.T) {
 	})
 	t.Run("should_return_updated_gauge", func(t *testing.T) {
 		store := inmemory.NewMemStorage()
-		store.UpdateGauge("gauge1", 12.34)
+		store.UpdateGauge(t.Context(), "gauge1", 12.34)
 		body := "{\"id\": \"gauge1\",\"type\": \"gauge\",\"value\": 12.34}"
 
 		response := sendUpdateRequestJSON(t, store, body)

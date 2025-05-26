@@ -1,6 +1,7 @@
 package jsonfile
 
 import (
+	"context"
 	"fmt"
 	"github.com/mkolibaba/metrics/internal/server/storage/inmemory"
 	"go.uber.org/zap"
@@ -21,18 +22,18 @@ type FileStorage struct {
 	logger      *zap.SugaredLogger
 }
 
-func (f *FileStorage) UpdateGauge(name string, value float64) (float64, error) {
+func (f *FileStorage) UpdateGauge(ctx context.Context, name string, value float64) (float64, error) {
 	if f.instantSync {
 		defer f.save()
 	}
-	return f.MemStorage.UpdateGauge(name, value)
+	return f.MemStorage.UpdateGauge(ctx, name, value)
 }
 
-func (f *FileStorage) UpdateCounter(name string, value int64) (int64, error) {
+func (f *FileStorage) UpdateCounter(ctx context.Context, name string, value int64) (int64, error) {
 	if f.instantSync {
 		defer f.save()
 	}
-	return f.MemStorage.UpdateCounter(name, value)
+	return f.MemStorage.UpdateCounter(ctx, name, value)
 }
 
 func NewFileStorage(path string, storeInterval time.Duration, shouldRestore bool, logger *zap.SugaredLogger) (*FileStorage, error) {
@@ -70,12 +71,12 @@ func NewFileStorage(path string, storeInterval time.Duration, shouldRestore bool
 }
 
 func (f *FileStorage) save() {
-	gauges, err := f.GetGauges()
+	gauges, err := f.GetGauges(context.TODO())
 	if err != nil {
 		f.logger.Errorf("error retrieving gauges for saving: %v", err)
 		return
 	}
-	counters, err := f.GetCounters()
+	counters, err := f.GetCounters(context.TODO())
 	if err != nil {
 		f.logger.Errorf("error retrieving counters for saving: %v", err)
 		return
@@ -97,13 +98,13 @@ func restore(db FileDatabase, store *inmemory.MemStorage) error {
 	}
 
 	for k, v := range counters {
-		_, err := store.UpdateCounter(k, v)
+		_, err := store.UpdateCounter(context.TODO(), k, v)
 		if err != nil {
 			return err
 		}
 	}
 	for k, v := range gauges {
-		_, err := store.UpdateGauge(k, v)
+		_, err := store.UpdateGauge(context.TODO(), k, v)
 		if err != nil {
 			return err
 		}

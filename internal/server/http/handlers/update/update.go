@@ -1,6 +1,7 @@
 package update
 
 import (
+	"context"
 	"encoding/json"
 	"github.com/go-chi/chi/v5"
 	"github.com/mkolibaba/metrics/internal/common/http/model"
@@ -11,8 +12,8 @@ import (
 )
 
 type MetricsUpdater interface {
-	UpdateGauge(name string, value float64) (float64, error)
-	UpdateCounter(name string, value int64) (int64, error)
+	UpdateGauge(ctx context.Context, name string, value float64) (float64, error)
+	UpdateCounter(ctx context.Context, name string, value int64) (int64, error)
 }
 
 func New(updater MetricsUpdater) http.HandlerFunc {
@@ -28,7 +29,7 @@ func New(updater MetricsUpdater) http.HandlerFunc {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
-			_, err = updater.UpdateGauge(name, v)
+			_, err = updater.UpdateGauge(r.Context(), name, v)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
@@ -39,7 +40,7 @@ func New(updater MetricsUpdater) http.HandlerFunc {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
-			_, err = updater.UpdateCounter(name, v)
+			_, err = updater.UpdateCounter(r.Context(), name, v)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
@@ -81,14 +82,14 @@ func NewJSON(updater MetricsUpdater, logger *zap.SugaredLogger) http.HandlerFunc
 
 		switch requestBody.MType {
 		case handlers.MetricGauge:
-			updated, err := updater.UpdateGauge(requestBody.ID, *requestBody.Value)
+			updated, err := updater.UpdateGauge(r.Context(), requestBody.ID, *requestBody.Value)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
 			writeResponse(w, t, name, nil, &updated)
 		case handlers.MetricCounter:
-			updated, err := updater.UpdateCounter(requestBody.ID, *requestBody.Delta)
+			updated, err := updater.UpdateCounter(r.Context(), requestBody.ID, *requestBody.Delta)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				return

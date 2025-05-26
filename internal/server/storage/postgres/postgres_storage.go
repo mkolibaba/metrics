@@ -1,6 +1,7 @@
 package postgres
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"fmt"
@@ -12,8 +13,8 @@ type PostgresStorage struct {
 	db *sql.DB
 }
 
-func (p *PostgresStorage) GetGauges() (map[string]float64, error) {
-	stmt, err := p.db.Prepare("SELECT id, value FROM gauge")
+func (p *PostgresStorage) GetGauges(ctx context.Context) (map[string]float64, error) {
+	stmt, err := p.db.PrepareContext(ctx, "SELECT id, value FROM gauge")
 	if err != nil {
 		return nil, fmt.Errorf("error preparing statement: %w", err)
 	}
@@ -42,8 +43,8 @@ func (p *PostgresStorage) GetGauges() (map[string]float64, error) {
 	return gauges, nil
 }
 
-func (p *PostgresStorage) GetCounters() (map[string]int64, error) {
-	stmt, err := p.db.Prepare("SELECT id, delta FROM counter")
+func (p *PostgresStorage) GetCounters(ctx context.Context) (map[string]int64, error) {
+	stmt, err := p.db.PrepareContext(ctx, "SELECT id, delta FROM counter")
 	if err != nil {
 		return nil, fmt.Errorf("error preparing statement: %w", err)
 	}
@@ -72,8 +73,8 @@ func (p *PostgresStorage) GetCounters() (map[string]int64, error) {
 	return res, nil
 }
 
-func (p *PostgresStorage) GetGauge(name string) (float64, error) {
-	stmt, err := p.db.Prepare("SELECT value FROM gauge WHERE id = $1")
+func (p *PostgresStorage) GetGauge(ctx context.Context, name string) (float64, error) {
+	stmt, err := p.db.PrepareContext(ctx, "SELECT value FROM gauge WHERE id = $1")
 	if err != nil {
 		return 0, fmt.Errorf("error preparing statement: %w", err)
 	}
@@ -92,8 +93,8 @@ func (p *PostgresStorage) GetGauge(name string) (float64, error) {
 	return value, nil
 }
 
-func (p *PostgresStorage) GetCounter(name string) (int64, error) {
-	stmt, err := p.db.Prepare("SELECT delta FROM counter WHERE id = $1")
+func (p *PostgresStorage) GetCounter(ctx context.Context, name string) (int64, error) {
+	stmt, err := p.db.PrepareContext(ctx, "SELECT delta FROM counter WHERE id = $1")
 	if err != nil {
 		return 0, fmt.Errorf("error preparing statement: %w", err)
 	}
@@ -112,8 +113,8 @@ func (p *PostgresStorage) GetCounter(name string) (int64, error) {
 	return delta, nil
 }
 
-func (p *PostgresStorage) UpdateGauge(name string, value float64) (float64, error) {
-	stmt, err := p.db.Prepare(`INSERT INTO gauge (id, value) VALUES ($1, $2) 
+func (p *PostgresStorage) UpdateGauge(ctx context.Context, name string, value float64) (float64, error) {
+	stmt, err := p.db.PrepareContext(ctx, `INSERT INTO gauge (id, value) VALUES ($1, $2) 
                               ON CONFLICT (id) DO UPDATE SET value = excluded.value`)
 	if err != nil {
 		return 0, fmt.Errorf("error preparing statement: %w", err)
@@ -125,11 +126,11 @@ func (p *PostgresStorage) UpdateGauge(name string, value float64) (float64, erro
 		return 0, fmt.Errorf("error executing query: %w", err)
 	}
 
-	return p.GetGauge(name)
+	return p.GetGauge(ctx, name)
 }
 
-func (p *PostgresStorage) UpdateCounter(name string, value int64) (int64, error) {
-	stmt, err := p.db.Prepare(`INSERT INTO counter (id, delta) VALUES ($1, $2) 
+func (p *PostgresStorage) UpdateCounter(ctx context.Context, name string, value int64) (int64, error) {
+	stmt, err := p.db.PrepareContext(ctx, `INSERT INTO counter (id, delta) VALUES ($1, $2) 
                               ON CONFLICT (id) DO UPDATE SET delta = excluded.delta + counter.delta`)
 	if err != nil {
 		return 0, fmt.Errorf("error preparing statement: %w", err)
@@ -141,7 +142,7 @@ func (p *PostgresStorage) UpdateCounter(name string, value int64) (int64, error)
 		return 0, fmt.Errorf("error executing query: %w", err)
 	}
 
-	return p.GetCounter(name)
+	return p.GetCounter(ctx, name)
 }
 
 func New(db *sql.DB) *PostgresStorage {

@@ -22,8 +22,8 @@ func TestList(t *testing.T) {
 	})
 	t.Run("Should_return_list_of_metrics", func(t *testing.T) {
 		store := inmemory.NewMemStorage()
-		store.UpdateCounter("counter1", 12)
-		store.UpdateGauge("gauge1", 34.56)
+		store.UpdateCounter(t.Context(), "counter1", 12)
+		store.UpdateGauge(t.Context(), "gauge1", 34.56)
 
 		response := sendRequest(t, store)
 

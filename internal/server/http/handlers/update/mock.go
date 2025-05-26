@@ -1,6 +1,7 @@
 package update
 
 import (
+	"context"
 	"slices"
 	"testing"
 )
@@ -12,14 +13,14 @@ type MetricsUpdaterMock struct {
 	CountersValuesPassed []int64
 }
 
-func (m *MetricsUpdaterMock) UpdateGauge(name string, value float64) (float64, error) {
+func (m *MetricsUpdaterMock) UpdateGauge(ctx context.Context, name string, value float64) (float64, error) {
 	m.Calls++
 	m.NamesPassed = append(m.NamesPassed, name)
 	m.GaugesValuesPassed = append(m.GaugesValuesPassed, value)
 	return 0, nil
 }
 
-func (m *MetricsUpdaterMock) UpdateCounter(name string, value int64) (int64, error) {
+func (m *MetricsUpdaterMock) UpdateCounter(ctx context.Context, name string, value int64) (int64, error) {
 	m.Calls++
 	m.NamesPassed = append(m.NamesPassed, name)
 	m.CountersValuesPassed = append(m.CountersValuesPassed, value)
