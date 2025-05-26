@@ -28,7 +28,7 @@ func Run() {
 
 	var r chi.Router
 	if cfg.DatabaseDSN != "" {
-		store := postgres.New(db, logger)
+		store := postgres.New(db)
 		runMigrations(ctx, db, logger)
 
 		r = router.New(store, db, logger)
