@@ -21,14 +21,14 @@ type FileStorage struct {
 	logger      *zap.SugaredLogger
 }
 
-func (f *FileStorage) UpdateGauge(name string, value float64) float64 {
+func (f *FileStorage) UpdateGauge(name string, value float64) (float64, error) {
 	if f.instantSync {
 		defer f.save()
 	}
 	return f.MemStorage.UpdateGauge(name, value)
 }
 
-func (f *FileStorage) UpdateCounter(name string, value int64) int64 {
+func (f *FileStorage) UpdateCounter(name string, value int64) (int64, error) {
 	if f.instantSync {
 		defer f.save()
 	}

@@ -108,38 +108,34 @@ func (p *PostgresStorage) GetCounter(name string) (int64, error) {
 	return delta, nil
 }
 
-func (p *PostgresStorage) UpdateGauge(name string, value float64) float64 {
+func (p *PostgresStorage) UpdateGauge(name string, value float64) (float64, error) {
 	stmt, err := p.db.Prepare(`INSERT INTO gauge (id, value) VALUES ($1, $2) 
                               ON CONFLICT (id) DO UPDATE SET value = excluded.value`)
 	if err != nil {
-		return 0
+		return 0, err
 	}
 
 	_, err = stmt.Exec(name, value)
 	if err != nil {
-		return 0
+		return 0, err
 	}
 
-	gauge, _ := p.GetGauge(name)
-	return gauge
+	return p.GetGauge(name)
 }
 
-func (p *PostgresStorage) UpdateCounter(name string, value int64) int64 {
+func (p *PostgresStorage) UpdateCounter(name string, value int64) (int64, error) {
 	stmt, err := p.db.Prepare(`INSERT INTO counter (id, delta) VALUES ($1, $2) 
                               ON CONFLICT (id) DO UPDATE SET delta = excluded.delta + counter.delta`)
 	if err != nil {
-		p.logger.Errorf("stmt: %s", err)
-		return 0
+		return 0, err
 	}
 
 	_, err = stmt.Exec(name, value)
 	if err != nil {
-		p.logger.Errorf("stmt exec: %s", err)
-		return 0
+		return 0, err
 	}
 
-	counter, _ := p.GetCounter(name)
-	return counter
+	return p.GetCounter(name)
 }
 
 func New(db *sql.DB, logger *zap.SugaredLogger) *PostgresStorage {

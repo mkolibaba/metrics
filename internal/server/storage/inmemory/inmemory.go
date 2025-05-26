@@ -31,14 +31,14 @@ func (m *MemStorage) GetCounter(name string) (int64, error) {
 	return v, nil
 }
 
-func (m *MemStorage) UpdateGauge(name string, value float64) float64 {
+func (m *MemStorage) UpdateGauge(name string, value float64) (float64, error) {
 	m.gauges[name] = value
-	return m.gauges[name]
+	return m.gauges[name], nil
 }
 
-func (m *MemStorage) UpdateCounter(name string, value int64) int64 {
+func (m *MemStorage) UpdateCounter(name string, value int64) (int64, error) {
 	m.counters[name] += value
-	return m.counters[name]
+	return m.counters[name], nil
 }
 
 func NewMemStorage() *MemStorage {

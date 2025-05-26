@@ -11,8 +11,8 @@ import (
 )
 
 type MetricsUpdater interface {
-	UpdateGauge(name string, value float64) float64
-	UpdateCounter(name string, value int64) int64
+	UpdateGauge(name string, value float64) (float64, error)
+	UpdateCounter(name string, value int64) (int64, error)
 }
 
 func New(updater MetricsUpdater) http.HandlerFunc {
@@ -28,14 +28,22 @@ func New(updater MetricsUpdater) http.HandlerFunc {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
-			updater.UpdateGauge(name, v)
+			_, err = updater.UpdateGauge(name, v)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
 		case handlers.MetricCounter:
 			v, err := strconv.ParseInt(val, 10, 64)
 			if err != nil {
 				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
-			updater.UpdateCounter(name, v)
+			_, err = updater.UpdateCounter(name, v)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
 		default:
 			w.WriteHeader(http.StatusBadRequest)
 		}
@@ -73,10 +81,18 @@ func NewJSON(updater MetricsUpdater, logger *zap.SugaredLogger) http.HandlerFunc
 
 		switch requestBody.MType {
 		case handlers.MetricGauge:
-			updated := updater.UpdateGauge(requestBody.ID, *requestBody.Value)
+			updated, err := updater.UpdateGauge(requestBody.ID, *requestBody.Value)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
 			writeResponse(w, t, name, nil, &updated)
 		case handlers.MetricCounter:
-			updated := updater.UpdateCounter(requestBody.ID, *requestBody.Delta)
+			updated, err := updater.UpdateCounter(requestBody.ID, *requestBody.Delta)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
 			writeResponse(w, t, name, &updated, nil)
 		default:
 			w.WriteHeader(http.StatusBadRequest)
