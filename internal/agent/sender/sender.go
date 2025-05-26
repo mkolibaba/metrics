@@ -7,8 +7,8 @@ import (
 )
 
 type ServerAPI interface {
-	UpdateCounter(name string, value int64) error
-	UpdateGauge(name string, value float64) error
+	UpdateCounters(counters map[string]int64) error
+	UpdateGauges(gauges map[string]float64) error
 }
 
 type MetricsSender struct {
@@ -35,17 +35,15 @@ func (m *MetricsSender) StartSend(chGauges <-chan map[string]float64, chCounters
 }
 
 func (m *MetricsSender) send(gauges map[string]float64, counters map[string]int64) error {
-	for k, v := range gauges {
-		err := m.serverAPI.UpdateGauge(k, v)
-		if err != nil {
-			return fmt.Errorf("error during gauge value send: %v", err)
-		}
+	err := m.serverAPI.UpdateGauges(gauges)
+	if err != nil {
+		return fmt.Errorf("error during gauges send: %v", err)
 	}
-	for k, v := range counters {
-		err := m.serverAPI.UpdateCounter(k, v)
-		if err != nil {
-			return fmt.Errorf("error during counter value send: %v", err)
-		}
+
+	err = m.serverAPI.UpdateCounters(counters)
+	if err != nil {
+		return fmt.Errorf("error during counters send: %v", err)
 	}
+
 	return nil
 }

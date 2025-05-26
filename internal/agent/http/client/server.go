@@ -20,23 +20,31 @@ func New(serverAddress string) *ServerClient {
 	}
 }
 
-func (s *ServerClient) UpdateCounter(name string, value int64) error {
-	return s.sendMetric(&model.Metrics{
-		ID:    name,
-		MType: "counter",
-		Delta: &value,
-	})
+func (s *ServerClient) UpdateCounters(counters map[string]int64) error {
+	metrics := make([]model.Metrics, 0, len(counters))
+	for name, delta := range counters {
+		metrics = append(metrics, model.Metrics{
+			ID:    name,
+			MType: "counter",
+			Delta: &delta,
+		})
+	}
+	return s.sendMetric(metrics)
 }
 
-func (s *ServerClient) UpdateGauge(name string, value float64) error {
-	return s.sendMetric(&model.Metrics{
-		ID:    name,
-		MType: "gauge",
-		Value: &value,
-	})
+func (s *ServerClient) UpdateGauges(gauges map[string]float64) error {
+	metrics := make([]model.Metrics, 0, len(gauges))
+	for name, value := range gauges {
+		metrics = append(metrics, model.Metrics{
+			ID:    name,
+			MType: "gauge",
+			Value: &value,
+		})
+	}
+	return s.sendMetric(metrics)
 }
 
-func (s *ServerClient) sendMetric(body *model.Metrics) error {
+func (s *ServerClient) sendMetric(body []model.Metrics) error {
 	var compressedBody bytes.Buffer
 	gw := gzip.NewWriter(&compressedBody)
 	if err := json.NewEncoder(gw).Encode(body); err != nil {
@@ -48,6 +56,6 @@ func (s *ServerClient) sendMetric(body *model.Metrics) error {
 		SetHeader("Content-Type", "application/json").
 		SetHeader("Content-Encoding", "gzip").
 		SetBody(compressedBody.Bytes()).
-		Post("/update/")
+		Post("/updates/")
 	return err
 }

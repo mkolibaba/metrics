@@ -10,7 +10,7 @@ type ServerAPIMock struct {
 	ShouldError  bool
 }
 
-func (s *ServerAPIMock) UpdateCounter(name string, value int64) error {
+func (s *ServerAPIMock) UpdateCounters(counters map[string]int64) error {
 	s.CounterCalls++
 	if s.ShouldError {
 		return fmt.Errorf("mock error")
@@ -18,7 +18,7 @@ func (s *ServerAPIMock) UpdateCounter(name string, value int64) error {
 	return nil
 }
 
-func (s *ServerAPIMock) UpdateGauge(name string, value float64) error {
+func (s *ServerAPIMock) UpdateGauges(gauges map[string]float64) error {
 	s.GaugeCalls++
 	if s.ShouldError {
 		return fmt.Errorf("mock error")
