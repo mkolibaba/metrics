@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"database/sql"
+	"github.com/go-chi/chi/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/mkolibaba/metrics/internal/common/log"
 	"github.com/mkolibaba/metrics/internal/server/config"
@@ -25,11 +26,18 @@ func Run() {
 	db := mustCreateDB(cfg.DatabaseDSN, logger)
 	defer db.Close()
 
-	store := postgres.New(db, logger)
+	var r chi.Router
+	if cfg.DatabaseDSN != "" {
+		store := postgres.New(db, logger)
+		runMigrations(ctx, db, logger)
 
-	runMigrations(ctx, db, logger)
+		r = router.New(store, db, logger)
+	} else {
+		store := mustCreateFileStorage(cfg, logger)
+		defer store.Close()
 
-	r := router.New(store, db, logger)
+		r = router.New(store, db, logger)
+	}
 
 	logger.Infof("running server on %s", cfg.ServerAddress)
 	if err := http.ListenAndServe(cfg.ServerAddress, r); err != nil {

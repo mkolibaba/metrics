@@ -25,7 +25,7 @@ func LoadServerConfig() (*ServerConfig, error) {
 	flag.IntVar(&cfg.StoreInterval, "i", 300, "store interval")
 	flag.StringVar(&cfg.FileStoragePath, "f", "db.json", "file storage path")
 	flag.BoolVar(&cfg.Restore, "r", true, "restore")
-	flag.StringVar(&cfg.DatabaseDSN, "d", "postgres://postgres:postgres@localhost:5432/metrics", "server address")
+	flag.StringVar(&cfg.DatabaseDSN, "d", "", "server address")
 	flag.Parse()
 
 	if err := env.Parse(&cfg); err != nil {
