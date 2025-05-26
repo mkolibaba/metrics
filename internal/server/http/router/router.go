@@ -29,6 +29,7 @@ func New(store MetricsStorage, db *sql.DB, logger *zap.SugaredLogger) chi.Router
 
 	r.Post("/value/", read.NewJSON(store))
 	r.Post("/update/", update.NewJSON(store, logger))
+	r.Post("/updates/", update.NewJSONBatch(store, logger))
 
 	r.Get("/ping", ping.New(db))
 

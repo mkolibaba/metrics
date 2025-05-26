@@ -80,16 +80,16 @@ func NewJSON(updater MetricsUpdater, logger *zap.SugaredLogger) http.HandlerFunc
 		t := requestBody.MType
 		name := requestBody.ID
 
-		switch requestBody.MType {
+		switch t {
 		case handlers.MetricGauge:
-			updated, err := updater.UpdateGauge(r.Context(), requestBody.ID, *requestBody.Value)
+			updated, err := updater.UpdateGauge(r.Context(), name, *requestBody.Value)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
 			writeResponse(w, t, name, nil, &updated)
 		case handlers.MetricCounter:
-			updated, err := updater.UpdateCounter(r.Context(), requestBody.ID, *requestBody.Delta)
+			updated, err := updater.UpdateCounter(r.Context(), name, *requestBody.Delta)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				return
@@ -98,6 +98,46 @@ func NewJSON(updater MetricsUpdater, logger *zap.SugaredLogger) http.HandlerFunc
 		default:
 			w.WriteHeader(http.StatusBadRequest)
 			return
+		}
+	}
+}
+
+func NewJSONBatch(updater MetricsUpdater, logger *zap.SugaredLogger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Content-Type") != "application/json" {
+			w.WriteHeader(http.StatusUnsupportedMediaType)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+
+		var requestBody []model.Metrics
+		if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
+			logger.Errorf("can not decode request body: %v", err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		for _, metrics := range requestBody {
+			t := metrics.MType
+			name := metrics.ID
+
+			switch t {
+			case handlers.MetricGauge:
+				_, err := updater.UpdateGauge(r.Context(), name, *metrics.Value)
+				if err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+					return
+				}
+			case handlers.MetricCounter:
+				_, err := updater.UpdateCounter(r.Context(), name, *metrics.Delta)
+				if err != nil {
+					w.WriteHeader(http.StatusInternalServerError)
+					return
+				}
+			default:
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
 		}
 	}
 }
