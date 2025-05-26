@@ -20,17 +20,22 @@ type MetricsStorage interface {
 func New(store MetricsStorage, db *sql.DB, logger *zap.SugaredLogger) chi.Router {
 	r := chi.NewRouter()
 
+	// middleware
 	r.Use(middleware.Logger(logger))
 	r.Use(middleware.Compressor(logger))
 
+	// read
 	r.Get("/", list.New(store, logger))
 	r.Get("/value/{type}/{name}", read.New(store, logger))
-	r.Post("/update/{type}/{name}/{value}", update.New(store))
-
 	r.Post("/value/", read.NewJSON(store))
-	r.Post("/update/", update.NewJSON(store, logger))
-	r.Post("/updates/", update.NewJSONBatch(store, logger))
 
+	// update
+	updateAPI := update.NewAPI(store, logger)
+	r.Post("/update/{type}/{name}/{value}", updateAPI.HandlePlain)
+	r.Post("/update/", updateAPI.HandleJSON)
+	r.Post("/updates/", updateAPI.HandleJSONBatch)
+
+	// other
 	r.Get("/ping", ping.New(db))
 
 	return r

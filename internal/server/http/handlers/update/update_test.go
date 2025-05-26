@@ -221,7 +221,9 @@ func sendUpdateRequestJSON(t *testing.T, updater MetricsUpdater, body string) *h
 
 	request := httptest.NewRequest(http.MethodPost, "/update/", strings.NewReader(body))
 	request.Header.Set("Content-Type", "application/json")
-	server := testutils.NewTestServer("POST /update/", NewJSON(updater, zap.S()))
+
+	api := NewAPI(updater, zap.S())
+	server := testutils.NewTestServer("POST /update/", http.HandlerFunc(api.HandleJSON))
 	return server.Execute(request)
 }
 
@@ -229,6 +231,8 @@ func sendUpdateRequest(t *testing.T, updater MetricsUpdater, url string) *httpte
 	t.Helper()
 
 	request := httptest.NewRequest(http.MethodPost, url, nil)
-	server := testutils.NewTestServer("POST /update/{type}/{name}/{value}", New(updater))
+
+	api := NewAPI(updater, zap.S())
+	server := testutils.NewTestServer("POST /update/{type}/{name}/{value}", http.HandlerFunc(api.HandlePlain))
 	return server.Execute(request)
 }

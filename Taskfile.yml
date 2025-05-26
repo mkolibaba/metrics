@@ -65,6 +65,7 @@ tasks:
       - task: iter10
       - task: iter11
       - task: iter12
+      - task: iter13
       - rm {{.BIN_AGENT_PATH}}
       - rm {{.BIN_SERVER_PATH}}
 
@@ -155,3 +156,10 @@ tasks:
       DATABASE_DSN: 'postgres://postgres:postgres@localhost:5432/metrics'
     cmds:
       - ./bin/metricstest -test.v -test.run=^TestIteration12$ -binary-path={{.BIN_SERVER_PATH}} -agent-binary-path={{.BIN_AGENT_PATH}} -server-port={{.PORT}} -source-path=. -database-dsn={{.DATABASE_DSN}}
+
+  iter13:
+    internal: true
+    vars:
+      DATABASE_DSN: 'postgres://postgres:postgres@localhost:5432/metrics'
+    cmds:
+      - ./bin/metricstest -test.v -test.run=^TestIteration13$ -binary-path={{.BIN_SERVER_PATH}} -agent-binary-path={{.BIN_AGENT_PATH}} -server-port={{.PORT}} -source-path=. -database-dsn={{.DATABASE_DSN}}
