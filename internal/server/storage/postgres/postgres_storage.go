@@ -36,7 +36,7 @@ func (p *PostgresStorage) GetGauges(ctx context.Context) (map[string]float64, er
 		gauges[id] = value
 	}
 
-	if rows.Err() != nil {
+	if err = rows.Err(); err != nil {
 		return nil, fmt.Errorf("error iterating rows: %w", err)
 	}
 
@@ -66,7 +66,7 @@ func (p *PostgresStorage) GetCounters(ctx context.Context) (map[string]int64, er
 		res[id] = delta
 	}
 
-	if rows.Err() != nil {
+	if err = rows.Err(); err != nil {
 		return nil, fmt.Errorf("error iterating rows: %w", err)
 	}
 
