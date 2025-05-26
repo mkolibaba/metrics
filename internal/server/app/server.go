@@ -1,27 +1,33 @@
 package app
 
 import (
+	"context"
 	"database/sql"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/mkolibaba/metrics/internal/common/log"
 	"github.com/mkolibaba/metrics/internal/server/config"
 	"github.com/mkolibaba/metrics/internal/server/http/router"
 	"github.com/mkolibaba/metrics/internal/server/storage/jsonfile"
+	"github.com/mkolibaba/metrics/internal/server/storage/postgres"
+	"github.com/mkolibaba/metrics/migrations"
 	"go.uber.org/zap"
 	stdlog "log"
 	"net/http"
 )
 
 func Run() {
+	ctx := context.Background()
+
 	cfg := mustCreateConfig()
 
 	logger := log.New()
 
-	store := mustCreateFileStorage(cfg, logger)
-	defer store.Close()
-
 	db := mustCreateDB(cfg.DatabaseDSN, logger)
 	defer db.Close()
+
+	store := postgres.New(db, logger)
+
+	runMigrations(ctx, db, logger)
 
 	r := router.New(store, db, logger)
 
@@ -53,4 +59,11 @@ func mustCreateDB(databaseDSN string, logger *zap.SugaredLogger) *sql.DB {
 		logger.Fatalf("error creating db: %v", err)
 	}
 	return db
+}
+
+func runMigrations(ctx context.Context, db *sql.DB, logger *zap.SugaredLogger) {
+	err := migrations.Run(ctx, db, migrations.AppServer)
+	if err != nil {
+		logger.Fatalf("error during db migration: %v", err)
+	}
 }
