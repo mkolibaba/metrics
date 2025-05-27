@@ -6,15 +6,21 @@ import (
 	"encoding/json"
 	"github.com/go-resty/resty/v2"
 	"github.com/mkolibaba/metrics/internal/common/http/model"
+	"go.uber.org/zap"
+	"time"
 )
 
 type ServerClient struct {
 	client *resty.Client
 }
 
-func New(serverAddress string) *ServerClient {
+func New(serverAddress string, logger *zap.SugaredLogger) *ServerClient {
 	client := resty.New().
-		SetBaseURL("http://" + serverAddress)
+		SetBaseURL("http://" + serverAddress).
+		SetRetryCount(3).
+		SetRetryWaitTime(1 * time.Second).
+		SetRetryMaxWaitTime(5 * time.Second).
+		SetLogger(logger)
 	return &ServerClient{
 		client: client,
 	}
