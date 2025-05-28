@@ -18,7 +18,7 @@ type fileContent struct {
 }
 
 func newFileDB(file *os.File) *jsonFileDB {
-	encoder := json.NewEncoder(&tape{file})
+	encoder := json.NewEncoder(&tapeWriter{file})
 	encoder.SetIndent("", "    ")
 	return &jsonFileDB{file, encoder}
 }
@@ -61,11 +61,11 @@ func (f *jsonFileDB) Close() {
 	f.file.Close()
 }
 
-type tape struct {
+type tapeWriter struct {
 	file *os.File
 }
 
-func (t *tape) Write(p []byte) (int, error) {
+func (t *tapeWriter) Write(p []byte) (int, error) {
 	if err := t.file.Truncate(0); err != nil {
 		return 0, err
 	}
