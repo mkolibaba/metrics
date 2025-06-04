@@ -67,6 +67,7 @@ tasks:
       - task: iter12
       - task: iter13
       - task: iter14
+      - task: iter14-race
       - rm {{.BIN_AGENT_PATH}}
       - rm {{.BIN_SERVER_PATH}}
 
@@ -172,3 +173,8 @@ tasks:
       KEY: 'qwerty'
     cmds:
       - ./bin/metricstest -test.v -test.run=^TestIteration14$ -binary-path={{.BIN_SERVER_PATH}} -agent-binary-path={{.BIN_AGENT_PATH}} -server-port={{.PORT}} -source-path=. -database-dsn={{.DATABASE_DSN}} -key={{.KEY}}
+
+  iter14-race:
+    internal: true
+    cmds:
+      - go test -v -race ./...

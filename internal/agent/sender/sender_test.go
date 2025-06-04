@@ -4,13 +4,11 @@ import (
 	"go.uber.org/zap"
 	"testing"
 	"time"
-
-	"github.com/mkolibaba/metrics/internal/agent/http/client/mocks"
 )
 
 func TestStartSend(t *testing.T) {
 	// Create mock server API
-	serverAPI := &mocks.ServerAPIMock{}
+	serverAPI := &ServerAPIMock{}
 
 	// Create channels for metrics
 	chGauges := make(chan map[string]float64, 1)
@@ -36,10 +34,10 @@ func TestStartSend(t *testing.T) {
 	time.Sleep(150 * time.Millisecond)
 
 	// Verify that the metrics were sent
-	if serverAPI.GaugeCalls != 1 {
-		t.Errorf("expected 1 gauge call, got %d", serverAPI.GaugeCalls)
+	if len(serverAPI.UpdateGaugesCalls()) != 1 {
+		t.Errorf("expected 1 gauge call, got %d", len(serverAPI.UpdateGaugesCalls()))
 	}
-	if serverAPI.CounterCalls != 1 {
-		t.Errorf("expected 1 counter call, got %d", serverAPI.CounterCalls)
+	if len(serverAPI.UpdateCountersCalls()) != 1 {
+		t.Errorf("expected 1 counter call, got %d", len(serverAPI.UpdateCountersCalls()))
 	}
 }
