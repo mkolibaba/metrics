@@ -31,12 +31,12 @@ func Run() {
 		store := postgres.New(db)
 		runMigrations(ctx, db, logger)
 
-		r = router.New(store, db, logger)
+		r = router.New(store, db, cfg.Key, logger)
 	} else {
 		store := mustCreateFileStorage(cfg, logger)
 		defer store.Close()
 
-		r = router.New(store, db, logger)
+		r = router.New(store, db, cfg.Key, logger)
 	}
 
 	logger.Infof("running server on %s", cfg.ServerAddress)

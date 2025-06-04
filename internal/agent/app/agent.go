@@ -20,7 +20,7 @@ func Run() {
 	c := collector.NewMetricsCollector(cfg.PollInterval, logger)
 	go c.StartCollect(chGauges, chCounters)
 
-	serverAPI := client.New(cfg.ServerAddress, logger)
+	serverAPI := client.New(cfg.ServerAddress, cfg.Key, logger)
 	metricsSender := sender.NewMetricsSender(serverAPI, cfg.ReportInterval, logger)
 
 	logger.Info("running agent")
