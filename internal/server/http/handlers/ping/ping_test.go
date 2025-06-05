@@ -20,32 +20,37 @@ func (m *mockDB) PingContext(ctx context.Context) error {
 	return nil
 }
 
-func TestNewHandler_Success(t *testing.T) {
-	mock := &mockDB{
-		pingFunc: func(ctx context.Context) error {
-			return nil
+func TestHandlePing(t *testing.T) {
+	cases := map[string]struct {
+		pingFunc   func(ctx context.Context) error
+		wantStatus int
+	}{
+		"success": {
+			pingFunc: func(ctx context.Context) error {
+				return nil
+			},
+			wantStatus: http.StatusOK,
+		},
+		"failure": {
+			pingFunc: func(ctx context.Context) error {
+				return sql.ErrConnDone
+			},
+			wantStatus: http.StatusInternalServerError,
 		},
 	}
 
-	server := testutils.NewTestServer("/ping", New(mock))
+	for name, c := range cases {
+		t.Run(name, func(t *testing.T) {
+			mock := &mockDB{
+				pingFunc: c.pingFunc,
+			}
 
-	request := httptest.NewRequest(http.MethodGet, "/ping", nil)
-	response := server.Execute(request)
+			server := testutils.NewTestServer("/ping", New(mock))
 
-	testutils.AssertResponseStatusCode(t, http.StatusOK, response.Code)
-}
+			request := httptest.NewRequest(http.MethodGet, "/ping", nil)
+			response := server.Execute(request)
 
-func TestNewHandler_Failure(t *testing.T) {
-	mock := &mockDB{
-		pingFunc: func(ctx context.Context) error {
-			return sql.ErrConnDone
-		},
+			testutils.AssertResponseStatusCode(t, c.wantStatus, response.Code)
+		})
 	}
-
-	server := testutils.NewTestServer("/ping", New(mock))
-
-	request := httptest.NewRequest(http.MethodGet, "/ping", nil)
-	response := server.Execute(request)
-
-	testutils.AssertResponseStatusCode(t, http.StatusInternalServerError, response.Code)
 }
