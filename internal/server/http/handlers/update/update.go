@@ -63,10 +63,6 @@ func (a *API) HandlePlain(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) HandleJSON(w http.ResponseWriter, r *http.Request) {
-	if r.Header.Get("Content-Type") != "application/json" {
-		w.WriteHeader(http.StatusUnsupportedMediaType)
-		return
-	}
 	w.Header().Set("Content-Type", "application/json")
 
 	requestBody := &model.Metrics{}
@@ -101,10 +97,6 @@ func (a *API) HandleJSON(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) HandleJSONBatch(w http.ResponseWriter, r *http.Request) {
-	if r.Header.Get("Content-Type") != "application/json" {
-		w.WriteHeader(http.StatusUnsupportedMediaType)
-		return
-	}
 	w.Header().Set("Content-Type", "application/json")
 
 	var requestBody []model.Metrics

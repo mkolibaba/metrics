@@ -2,44 +2,29 @@ package config
 
 import (
 	"github.com/mkolibaba/metrics/internal/server/testutils"
+	"reflect"
 	"testing"
 	"time"
 )
 
-func TestConfig(t *testing.T) {
-	address := "123"
-	t.Setenv("ADDRESS", address)
+func TestLoadServerConfig(t *testing.T) {
+	t.Setenv("ADDRESS", "123")
+	t.Setenv("STORE_INTERVAL", "2")
+	t.Setenv("FILE_STORAGE_PATH", "/a/b/c/file.txt")
+	t.Setenv("RESTORE", "true")
+	t.Setenv("DATABASE_DSN", "my-db-dsn")
+	wantConfig := &ServerConfig{
+		ServerAddress:   "123",
+		StoreInterval:   2 * time.Second,
+		FileStoragePath: "/a/b/c/file.txt",
+		Restore:         true,
+		DatabaseDSN:     "my-db-dsn",
+	}
 
-	storeInterval := "2"
-	storeIntervalDuration := 2 * time.Second
-	t.Setenv("STORE_INTERVAL", storeInterval)
-
-	fileStoragePath := "/a/b/c/file.txt"
-	t.Setenv("FILE_STORAGE_PATH", fileStoragePath)
-
-	restore := "true"
-	restoreBool := true
-	t.Setenv("RESTORE", restore)
-
-	dbDSN := "my-db-dsn"
-	t.Setenv("DATABASE_DSN", dbDSN)
-
-	cfg, err := LoadServerConfig()
+	gotConfig, err := LoadServerConfig()
 	testutils.AssertNoError(t, err)
 
-	if cfg.ServerAddress != address {
-		t.Errorf("want server address %s, got %s", address, cfg.ServerAddress)
-	}
-	if cfg.StoreInterval != storeIntervalDuration {
-		t.Errorf("want store interval %s, got %s", storeIntervalDuration, cfg.StoreInterval)
-	}
-	if cfg.FileStoragePath != fileStoragePath {
-		t.Errorf("want file storage path %s, got %s", fileStoragePath, cfg.FileStoragePath)
-	}
-	if cfg.Restore != restoreBool {
-		t.Errorf("want restore %v, got %v", restoreBool, cfg.Restore)
-	}
-	if cfg.DatabaseDSN != dbDSN {
-		t.Errorf("want database dsn %s, got %s", dbDSN, cfg.DatabaseDSN)
+	if !reflect.DeepEqual(wantConfig, gotConfig) {
+		t.Errorf("want config %#v, got %#v", wantConfig, gotConfig)
 	}
 }
