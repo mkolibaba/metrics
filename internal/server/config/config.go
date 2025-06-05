@@ -6,6 +6,13 @@ import (
 	"time"
 )
 
+const (
+	serverAddressDefault        = "localhost:8080"
+	storeIntervalSecondsDefault = 300
+	fileStoragePathDefault      = "db.json"
+	restoreDefault              = true
+)
+
 type ServerConfig struct {
 	ServerAddress   string `env:"ADDRESS"`
 	StoreInterval   time.Duration
@@ -21,10 +28,10 @@ type configAlias struct {
 func LoadServerConfig() (*ServerConfig, error) {
 	var cfg configAlias
 
-	flag.StringVar(&cfg.ServerAddress, "a", "localhost:8080", "server address")
-	flag.IntVar(&cfg.StoreInterval, "i", 300, "store interval")
-	flag.StringVar(&cfg.FileStoragePath, "f", "db.json", "file storage path")
-	flag.BoolVar(&cfg.Restore, "r", true, "restore")
+	flag.StringVar(&cfg.ServerAddress, "a", serverAddressDefault, "server address")
+	flag.IntVar(&cfg.StoreInterval, "i", storeIntervalSecondsDefault, "store interval")
+	flag.StringVar(&cfg.FileStoragePath, fileStoragePathDefault, "db.json", "file storage path")
+	flag.BoolVar(&cfg.Restore, "r", restoreDefault, "restore")
 	flag.StringVar(&cfg.DatabaseDSN, "d", "", "server address")
 	flag.Parse()
 
