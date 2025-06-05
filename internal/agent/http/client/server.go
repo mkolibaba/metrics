@@ -6,8 +6,8 @@ import (
 	"encoding/json"
 	"github.com/go-resty/resty/v2"
 	"github.com/mkolibaba/metrics/internal/common/http/model"
+	"github.com/mkolibaba/metrics/internal/common/retry"
 	"go.uber.org/zap"
-	"time"
 )
 
 const retryAttempts = 3
@@ -66,17 +66,8 @@ func (s *ServerClient) sendMetric(body []model.Metrics) error {
 		SetHeader("Content-Encoding", "gzip").
 		SetBody(compressedBody.Bytes())
 
-	var err error
-	for i := 0; i <= retryAttempts; i++ {
-		_, err = request.Post("/updates/")
-		if err == nil || i == retryAttempts {
-			break
-		}
-
-		interval := time.Duration(retryIntervalsSeconds[i]) * time.Second
-		s.logger.Warnf("send metrics error: %s. retrying in %s", err, interval)
-		time.Sleep(interval)
-	}
-
-	return err
+	return retry.Do(func() error {
+		_, err := request.Post("/updates/")
+		return err
+	})
 }
