@@ -3,11 +3,12 @@ package app
 import (
 	"context"
 	"database/sql"
-	"github.com/go-chi/chi/v5"
+	"fmt"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/mkolibaba/metrics/internal/common/log"
 	"github.com/mkolibaba/metrics/internal/server/config"
 	"github.com/mkolibaba/metrics/internal/server/http/router"
+	"github.com/mkolibaba/metrics/internal/server/storage/inmemory"
 	"github.com/mkolibaba/metrics/internal/server/storage/jsonfile"
 	"github.com/mkolibaba/metrics/internal/server/storage/postgres"
 	"github.com/mkolibaba/metrics/migrations"
@@ -16,28 +17,31 @@ import (
 	"net/http"
 )
 
+var noopFn = func() {}
+
 func Run() {
 	ctx := context.Background()
 
-	cfg := mustCreateConfig()
+	cfg, err := config.LoadServerConfig()
+	if err != nil {
+		stdlog.Fatalf("error creating config: %v", err)
+	}
 
 	logger := log.New()
 
-	db := mustCreateDB(cfg.DatabaseDSN, logger)
+	db, err := createDB(cfg.DatabaseDSN)
+	if err != nil {
+		logger.Fatalf("error creating db: %v", err)
+	}
 	defer db.Close()
 
-	var r chi.Router
-	if cfg.DatabaseDSN != "" {
-		store := postgres.New(db)
-		runMigrations(ctx, db, logger)
-
-		r = router.New(store, db, logger)
-	} else {
-		store := mustCreateFileStorage(cfg, logger)
-		defer store.Close()
-
-		r = router.New(store, db, logger)
+	store, closeFn, err := createStore(ctx, cfg, db, logger)
+	if err != nil {
+		logger.Fatalf("error creating store: %v", err)
 	}
+	defer closeFn()
+
+	r := router.New(store, db, logger)
 
 	logger.Infof("running server on %s", cfg.ServerAddress)
 	if err := http.ListenAndServe(cfg.ServerAddress, r); err != nil {
@@ -45,33 +49,31 @@ func Run() {
 	}
 }
 
-func mustCreateConfig() *config.ServerConfig {
-	cfg, err := config.LoadServerConfig()
-	if err != nil {
-		stdlog.Fatalf("error creating config: %v", err)
-	}
-	return cfg
+func createDB(databaseDSN string) (*sql.DB, error) {
+	return sql.Open("pgx", databaseDSN)
 }
 
-func mustCreateFileStorage(cfg *config.ServerConfig, logger *zap.SugaredLogger) *jsonfile.FileStorage {
-	store, err := jsonfile.NewFileStorage(cfg.FileStoragePath, cfg.StoreInterval, cfg.Restore, logger)
-	if err != nil {
-		logger.Fatalf("error creating file storage: %v", err)
+func createStore(
+	ctx context.Context,
+	cfg *config.ServerConfig,
+	db *sql.DB,
+	logger *zap.SugaredLogger,
+) (router.MetricsStorage, func(), error) {
+	if cfg.DatabaseDSN != "" {
+		store := postgres.New(db)
+		if err := migrations.Run(ctx, db, migrations.AppServer); err != nil {
+			return nil, nil, fmt.Errorf("error during db migration: %w", err)
+		}
+		return store, noopFn, nil
 	}
-	return store
-}
 
-func mustCreateDB(databaseDSN string, logger *zap.SugaredLogger) *sql.DB {
-	db, err := sql.Open("pgx", databaseDSN)
-	if err != nil {
-		logger.Fatalf("error creating db: %v", err)
+	if cfg.FileStoragePath != "" {
+		store, err := jsonfile.NewFileStorage(cfg.FileStoragePath, cfg.StoreInterval, cfg.Restore, logger)
+		if err != nil {
+			return nil, nil, fmt.Errorf("error creating file storage: %w", err)
+		}
+		return store, store.Close, nil
 	}
-	return db
-}
 
-func runMigrations(ctx context.Context, db *sql.DB, logger *zap.SugaredLogger) {
-	err := migrations.Run(ctx, db, migrations.AppServer)
-	if err != nil {
-		logger.Fatalf("error during db migration: %v", err)
-	}
+	return inmemory.NewMemStorage(), noopFn, nil
 }

@@ -10,19 +10,22 @@ import (
 	"time"
 )
 
+const retryAttempts = 3
+
+var retryIntervalsSeconds = []int{1, 3, 5}
+
 type ServerClient struct {
 	client *resty.Client
+	logger *zap.SugaredLogger
 }
 
 func New(serverAddress string, logger *zap.SugaredLogger) *ServerClient {
 	client := resty.New().
 		SetBaseURL("http://" + serverAddress).
-		SetRetryCount(3).
-		SetRetryWaitTime(1 * time.Second).
-		SetRetryMaxWaitTime(5 * time.Second).
 		SetLogger(logger)
 	return &ServerClient{
 		client: client,
+		logger: logger,
 	}
 }
 
@@ -58,10 +61,22 @@ func (s *ServerClient) sendMetric(body []model.Metrics) error {
 	}
 	gw.Close()
 
-	_, err := s.client.R().
+	request := s.client.R().
 		SetHeader("Content-Type", "application/json").
 		SetHeader("Content-Encoding", "gzip").
-		SetBody(compressedBody.Bytes()).
-		Post("/updates/")
+		SetBody(compressedBody.Bytes())
+
+	var err error
+	for i := 0; i <= retryAttempts; i++ {
+		_, err = request.Post("/updates/")
+		if err == nil || i == retryAttempts {
+			break
+		}
+
+		interval := time.Duration(retryIntervalsSeconds[i]) * time.Second
+		s.logger.Warnf("send metrics error: %s. retrying in %s", err, interval)
+		time.Sleep(interval)
+	}
+
 	return err
 }
