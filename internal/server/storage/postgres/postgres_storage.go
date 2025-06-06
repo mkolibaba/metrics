@@ -24,6 +24,7 @@ func (p *PostgresStorage) GetGauges(ctx context.Context) (map[string]float64, er
 	if err != nil {
 		return nil, fmt.Errorf("error executing query: %w", err)
 	}
+	defer rows.Close()
 
 	gauges := make(map[string]float64)
 	for rows.Next() {
@@ -54,6 +55,7 @@ func (p *PostgresStorage) GetCounters(ctx context.Context) (map[string]int64, er
 	if err != nil {
 		return nil, fmt.Errorf("error executing query: %w", err)
 	}
+	defer rows.Close()
 
 	res := make(map[string]int64)
 	for rows.Next() {
