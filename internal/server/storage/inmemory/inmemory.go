@@ -44,6 +44,20 @@ func (m *MemStorage) UpdateCounter(ctx context.Context, name string, value int64
 	return m.counters[name], nil
 }
 
+func (m *MemStorage) UpdateGauges(ctx context.Context, values []storage.Gauge) error {
+	for _, v := range values {
+		m.UpdateGauge(ctx, v.Name, v.Value)
+	}
+	return nil
+}
+
+func (m *MemStorage) UpdateCounters(ctx context.Context, values []storage.Counter) error {
+	for _, v := range values {
+		m.UpdateCounter(ctx, v.Name, v.Value)
+	}
+	return nil
+}
+
 func NewMemStorage() *MemStorage {
 	return &MemStorage{
 		gauges:   make(map[string]float64),

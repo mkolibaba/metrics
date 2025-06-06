@@ -2,6 +2,7 @@ package update
 
 import (
 	"context"
+	"github.com/mkolibaba/metrics/internal/server/storage"
 	"slices"
 	"testing"
 )
@@ -25,6 +26,20 @@ func (m *MetricsUpdaterMock) UpdateCounter(ctx context.Context, name string, val
 	m.NamesPassed = append(m.NamesPassed, name)
 	m.CountersValuesPassed = append(m.CountersValuesPassed, value)
 	return 0, nil
+}
+
+func (m *MetricsUpdaterMock) UpdateGauges(ctx context.Context, values []storage.Gauge) error {
+	for _, v := range values {
+		m.UpdateGauge(ctx, v.Name, v.Value)
+	}
+	return nil
+}
+
+func (m *MetricsUpdaterMock) UpdateCounters(ctx context.Context, values []storage.Counter) error {
+	for _, v := range values {
+		m.UpdateCounter(ctx, v.Name, v.Value)
+	}
+	return nil
 }
 
 // assertions

@@ -114,39 +114,102 @@ func (p *PostgresStorage) GetCounter(ctx context.Context, name string) (int64, e
 }
 
 func (p *PostgresStorage) UpdateGauge(ctx context.Context, name string, value float64) (float64, error) {
-	stmt, err := p.db.PrepareContext(ctx, `INSERT INTO gauge (id, value) VALUES ($1, $2) 
-                              ON CONFLICT (id) DO UPDATE SET value = excluded.value`)
+	err := doUpdateGauge(ctx, p.db, name, value)
 	if err != nil {
-		return 0, fmt.Errorf("error preparing statement: %w", err)
+		return 0, err
 	}
-	defer stmt.Close()
-
-	_, err = stmt.Exec(name, value)
-	if err != nil {
-		return 0, fmt.Errorf("error executing query: %w", err)
-	}
-
 	return p.GetGauge(ctx, name)
 }
 
 func (p *PostgresStorage) UpdateCounter(ctx context.Context, name string, value int64) (int64, error) {
-	stmt, err := p.db.PrepareContext(ctx, `INSERT INTO counter (id, delta) VALUES ($1, $2) 
-                              ON CONFLICT (id) DO UPDATE SET delta = excluded.delta + counter.delta`)
+	err := doUpdateCounter(ctx, p.db, name, value)
 	if err != nil {
-		return 0, fmt.Errorf("error preparing statement: %w", err)
+		return 0, err
+	}
+	return p.GetCounter(ctx, name)
+}
+
+func (p *PostgresStorage) UpdateGauges(ctx context.Context, values []storage.Gauge) error {
+	return p.executeInTransaction(ctx, func(tx *sql.Tx) error {
+		for _, v := range values {
+			err := doUpdateGauge(ctx, tx, v.Name, v.Value)
+			if err != nil {
+				return fmt.Errorf("update gauge: %w", err)
+			}
+		}
+		return nil
+	})
+}
+
+func (p *PostgresStorage) UpdateCounters(ctx context.Context, values []storage.Counter) error {
+	return p.executeInTransaction(ctx, func(tx *sql.Tx) error {
+		for _, v := range values {
+			err := doUpdateCounter(ctx, tx, v.Name, v.Value)
+			if err != nil {
+				return fmt.Errorf("update counter: %w", err)
+			}
+		}
+		return nil
+	})
+}
+
+func (p *PostgresStorage) executeInTransaction(ctx context.Context, fn func(*sql.Tx) error) error {
+	tx, err := p.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("create tx: %w", err)
+	}
+
+	err = fn(tx)
+	if err != nil {
+		return err
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return fmt.Errorf("commit tx: %w", err)
+	}
+
+	return nil
+}
+
+func doUpdateGauge(ctx context.Context, p preparer, name string, value float64) error {
+	stmt, err := p.PrepareContext(ctx, `INSERT INTO gauge (id, value) VALUES ($1, $2) 
+                              ON CONFLICT (id) DO UPDATE SET value = EXCLUDED.value`)
+	if err != nil {
+		return fmt.Errorf("error preparing statement: %w", err)
 	}
 	defer stmt.Close()
 
 	_, err = stmt.Exec(name, value)
 	if err != nil {
-		return 0, fmt.Errorf("error executing query: %w", err)
+		return fmt.Errorf("error executing query: %w", err)
 	}
 
-	return p.GetCounter(ctx, name)
+	return nil
+}
+
+func doUpdateCounter(ctx context.Context, p preparer, name string, value int64) error {
+	stmt, err := p.PrepareContext(ctx, `INSERT INTO counter (id, delta) VALUES ($1, $2) 
+                              ON CONFLICT (id) DO UPDATE SET delta = EXCLUDED.delta + counter.delta`)
+	if err != nil {
+		return fmt.Errorf("error preparing statement: %w", err)
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(name, value)
+	if err != nil {
+		return fmt.Errorf("error executing query: %w", err)
+	}
+
+	return nil
 }
 
 func New(db *sql.DB) *PostgresStorage {
 	return &PostgresStorage{
 		db: db,
 	}
+}
+
+type preparer interface {
+	PrepareContext(ctx context.Context, query string) (*sql.Stmt, error)
 }

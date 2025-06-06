@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/mkolibaba/metrics/internal/common/retry"
+	"github.com/mkolibaba/metrics/internal/server/storage"
 	"github.com/mkolibaba/metrics/internal/server/storage/inmemory"
 	"go.uber.org/zap"
 	"os"
@@ -35,6 +36,20 @@ func (f *FileStorage) UpdateCounter(ctx context.Context, name string, value int6
 		defer f.save()
 	}
 	return f.MemStorage.UpdateCounter(ctx, name, value)
+}
+
+func (f *FileStorage) UpdateGauges(ctx context.Context, values []storage.Gauge) error {
+	if f.instantSync {
+		defer f.save()
+	}
+	return f.MemStorage.UpdateGauges(ctx, values)
+}
+
+func (f *FileStorage) UpdateCounters(ctx context.Context, values []storage.Counter) error {
+	if f.instantSync {
+		defer f.save()
+	}
+	return f.MemStorage.UpdateCounters(ctx, values)
 }
 
 func NewFileStorage(path string, storeInterval time.Duration, shouldRestore bool, logger *zap.SugaredLogger) (*FileStorage, error) {
