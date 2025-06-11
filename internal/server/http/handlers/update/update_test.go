@@ -190,7 +190,7 @@ func TestSendMetricResponseJSON(t *testing.T) {
 	})
 	t.Run("should_return_updated_counter", func(t *testing.T) {
 		store := inmemory.NewMemStorage()
-		store.UpdateCounter("counter1", 12)
+		store.UpdateCounter(t.Context(), "counter1", 12)
 		body := "{\"id\": \"counter1\",\"type\": \"counter\",\"delta\": 12}"
 
 		response := sendUpdateRequestJSON(t, store, body)
@@ -207,7 +207,7 @@ func TestSendMetricResponseJSON(t *testing.T) {
 	})
 	t.Run("should_return_updated_gauge", func(t *testing.T) {
 		store := inmemory.NewMemStorage()
-		store.UpdateGauge("gauge1", 12.34)
+		store.UpdateGauge(t.Context(), "gauge1", 12.34)
 		body := "{\"id\": \"gauge1\",\"type\": \"gauge\",\"value\": 12.34}"
 
 		response := sendUpdateRequestJSON(t, store, body)
@@ -221,7 +221,9 @@ func sendUpdateRequestJSON(t *testing.T, updater MetricsUpdater, body string) *h
 
 	request := httptest.NewRequest(http.MethodPost, "/update/", strings.NewReader(body))
 	request.Header.Set("Content-Type", "application/json")
-	server := testutils.NewTestServer("POST /update/", NewJSON(updater, zap.S()))
+
+	api := NewAPI(updater, zap.S())
+	server := testutils.NewTestServer("POST /update/", http.HandlerFunc(api.HandleJSON))
 	return server.Execute(request)
 }
 
@@ -229,6 +231,8 @@ func sendUpdateRequest(t *testing.T, updater MetricsUpdater, url string) *httpte
 	t.Helper()
 
 	request := httptest.NewRequest(http.MethodPost, url, nil)
-	server := testutils.NewTestServer("POST /update/{type}/{name}/{value}", New(updater))
+
+	api := NewAPI(updater, zap.S())
+	server := testutils.NewTestServer("POST /update/{type}/{name}/{value}", http.HandlerFunc(api.HandlePlain))
 	return server.Execute(request)
 }

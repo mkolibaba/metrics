@@ -2,59 +2,45 @@ package config
 
 import (
 	"flag"
-	"log"
-	"os"
-	"strconv"
+	"github.com/caarlos0/env/v11"
 	"time"
 )
 
+const (
+	serverAddressDefault        = "localhost:8080"
+	storeIntervalSecondsDefault = 300
+	fileStoragePathDefault      = "db.json"
+	restoreDefault              = true
+)
+
 type ServerConfig struct {
-	ServerAddress   string
+	ServerAddress   string `env:"ADDRESS"`
 	StoreInterval   time.Duration
-	FileStoragePath string
-	Restore         bool
+	FileStoragePath string `env:"FILE_STORAGE_PATH"`
+	Restore         bool   `env:"RESTORE"`
+	DatabaseDSN     string `env:"DATABASE_DSN"`
+}
+type configAlias struct {
+	ServerConfig
+	StoreInterval int `env:"STORE_INTERVAL"`
 }
 
-func MustLoadServerConfig() *ServerConfig {
-	cfg := &ServerConfig{}
-	var storeIntervalSeconds int
+func LoadServerConfig() (*ServerConfig, error) {
+	var cfg configAlias
 
-	flag.StringVar(&cfg.ServerAddress, "a", "localhost:8080", "server address")
-	flag.IntVar(&storeIntervalSeconds, "i", 300, "store interval")
-	flag.StringVar(&cfg.FileStoragePath, "f", "db.json", "file storage path")
-	flag.BoolVar(&cfg.Restore, "r", true, "restore")
+	flag.StringVar(&cfg.ServerAddress, "a", serverAddressDefault, "server address")
+	flag.IntVar(&cfg.StoreInterval, "i", storeIntervalSecondsDefault, "store interval")
+	flag.StringVar(&cfg.FileStoragePath, fileStoragePathDefault, "db.json", "file storage path")
+	flag.BoolVar(&cfg.Restore, "r", restoreDefault, "restore")
+	flag.StringVar(&cfg.DatabaseDSN, "d", "", "server address")
 	flag.Parse()
 
-	if address, ok := os.LookupEnv("ADDRESS"); ok {
-		cfg.ServerAddress = address
-	}
-	if v, ok := os.LookupEnv("STORE_INTERVAL"); ok {
-		storeIntervalSeconds = mustStringToInt(v)
-	}
-	if v, ok := os.LookupEnv("FILE_STORAGE_PATH"); ok {
-		cfg.FileStoragePath = v
-	}
-	if v, ok := os.LookupEnv("RESTORE"); ok {
-		cfg.Restore = mustStringToBool(v)
+	if err := env.Parse(&cfg); err != nil {
+		return nil, err
 	}
 
-	cfg.StoreInterval = time.Duration(storeIntervalSeconds) * time.Second
+	result := cfg.ServerConfig
+	result.StoreInterval = time.Duration(cfg.StoreInterval) * time.Second
 
-	return cfg
-}
-
-func mustStringToInt(s string) int {
-	i, err := strconv.Atoi(s)
-	if err != nil {
-		log.Fatalf("error parsing config value: %v", err)
-	}
-	return i
-}
-
-func mustStringToBool(s string) bool {
-	b, err := strconv.ParseBool(s)
-	if err != nil {
-		log.Fatalf("error parsing config value: %v", err)
-	}
-	return b
+	return &result, nil
 }

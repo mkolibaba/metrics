@@ -1,6 +1,7 @@
 package read
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"github.com/go-chi/chi/v5"
@@ -14,8 +15,8 @@ import (
 )
 
 type MetricsGetter interface {
-	GetGauge(name string) (float64, error)
-	GetCounter(name string) (int64, error)
+	GetGauge(ctx context.Context, name string) (float64, error)
+	GetCounter(ctx context.Context, name string) (int64, error)
 }
 
 func New(getter MetricsGetter, logger *zap.SugaredLogger) http.HandlerFunc {
@@ -32,14 +33,14 @@ func New(getter MetricsGetter, logger *zap.SugaredLogger) http.HandlerFunc {
 
 		switch t {
 		case handlers.MetricCounter:
-			counter, err := getter.GetCounter(name)
+			counter, err := getter.GetCounter(r.Context(), name)
 			if errors.Is(err, storage.ErrMetricNotFound) {
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}
 			writeResponse(w, strconv.FormatInt(counter, 10))
 		case handlers.MetricGauge:
-			gauge, err := getter.GetGauge(name)
+			gauge, err := getter.GetGauge(r.Context(), name)
 			if errors.Is(err, storage.ErrMetricNotFound) {
 				w.WriteHeader(http.StatusNotFound)
 				return
@@ -64,10 +65,6 @@ func NewJSON(getter MetricsGetter) http.HandlerFunc {
 		}
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("Content-Type") != "application/json" {
-			w.WriteHeader(http.StatusUnsupportedMediaType)
-			return
-		}
 		w.Header().Set("Content-Type", "application/json")
 
 		requestBody := &model.Metrics{}
@@ -82,14 +79,14 @@ func NewJSON(getter MetricsGetter) http.HandlerFunc {
 
 		switch t {
 		case handlers.MetricCounter:
-			counter, err := getter.GetCounter(name)
+			counter, err := getter.GetCounter(r.Context(), name)
 			if errors.Is(err, storage.ErrMetricNotFound) {
 				w.WriteHeader(http.StatusNotFound)
 				return
 			}
 			writeResponse(w, t, name, &counter, nil)
 		case handlers.MetricGauge:
-			gauge, err := getter.GetGauge(name)
+			gauge, err := getter.GetGauge(r.Context(), name)
 			if errors.Is(err, storage.ErrMetricNotFound) {
 				w.WriteHeader(http.StatusNotFound)
 				return

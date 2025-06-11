@@ -1,7 +1,10 @@
 package jsonfile
 
 import (
+	"context"
 	"fmt"
+	"github.com/mkolibaba/metrics/internal/common/retry"
+	"github.com/mkolibaba/metrics/internal/server/storage"
 	"github.com/mkolibaba/metrics/internal/server/storage/inmemory"
 	"go.uber.org/zap"
 	"os"
@@ -21,22 +24,36 @@ type FileStorage struct {
 	logger      *zap.SugaredLogger
 }
 
-func (f *FileStorage) UpdateGauge(name string, value float64) float64 {
+func (f *FileStorage) UpdateGauge(ctx context.Context, name string, value float64) (float64, error) {
 	if f.instantSync {
 		defer f.save()
 	}
-	return f.MemStorage.UpdateGauge(name, value)
+	return f.MemStorage.UpdateGauge(ctx, name, value)
 }
 
-func (f *FileStorage) UpdateCounter(name string, value int64) int64 {
+func (f *FileStorage) UpdateCounter(ctx context.Context, name string, value int64) (int64, error) {
 	if f.instantSync {
 		defer f.save()
 	}
-	return f.MemStorage.UpdateCounter(name, value)
+	return f.MemStorage.UpdateCounter(ctx, name, value)
+}
+
+func (f *FileStorage) UpdateGauges(ctx context.Context, values []storage.Gauge) error {
+	if f.instantSync {
+		defer f.save()
+	}
+	return f.MemStorage.UpdateGauges(ctx, values)
+}
+
+func (f *FileStorage) UpdateCounters(ctx context.Context, values []storage.Counter) error {
+	if f.instantSync {
+		defer f.save()
+	}
+	return f.MemStorage.UpdateCounters(ctx, values)
 }
 
 func NewFileStorage(path string, storeInterval time.Duration, shouldRestore bool, logger *zap.SugaredLogger) (*FileStorage, error) {
-	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0666)
+	file, err := tryOpenFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("error opening file %s: %v", path, err)
 	}
@@ -70,7 +87,18 @@ func NewFileStorage(path string, storeInterval time.Duration, shouldRestore bool
 }
 
 func (f *FileStorage) save() {
-	if err := f.db.Save(f.GetGauges(), f.GetCounters()); err != nil {
+	gauges, err := f.GetGauges(context.Background())
+	if err != nil {
+		f.logger.Errorf("error retrieving gauges for saving: %v", err)
+		return
+	}
+	counters, err := f.GetCounters(context.Background())
+	if err != nil {
+		f.logger.Errorf("error retrieving counters for saving: %v", err)
+		return
+	}
+
+	if err := f.db.Save(gauges, counters); err != nil {
 		f.logger.Errorf("error saving metrics: %v", err)
 	}
 }
@@ -86,10 +114,16 @@ func restore(db FileDatabase, store *inmemory.MemStorage) error {
 	}
 
 	for k, v := range counters {
-		store.UpdateCounter(k, v)
+		_, err := store.UpdateCounter(context.Background(), k, v)
+		if err != nil {
+			return err
+		}
 	}
 	for k, v := range gauges {
-		store.UpdateGauge(k, v)
+		_, err := store.UpdateGauge(context.Background(), k, v)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -103,4 +137,10 @@ func newUnderlyingStorage(db FileDatabase, shouldRestore bool) (*inmemory.MemSto
 		}
 	}
 	return store, nil
+}
+
+func tryOpenFile(path string) (*os.File, error) {
+	return retry.DoWithReturn(func() (*os.File, error) {
+		return os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0666)
+	})
 }

@@ -2,47 +2,43 @@ package config
 
 import (
 	"flag"
-	"log"
-	"os"
-	"strconv"
+	"github.com/caarlos0/env/v11"
 	"time"
 )
 
+const (
+	serverAddressDefault         = "localhost:8080"
+	reportIntervalSecondsDefault = 10
+	pollIntervalSecondsDefault   = 10
+)
+
 type AgentConfig struct {
-	ServerAddress  string
+	ServerAddress  string `env:"ADDRESS"`
 	ReportInterval time.Duration
 	PollInterval   time.Duration
 }
 
-func MustLoadAgentConfig() *AgentConfig {
-	cfg := &AgentConfig{}
-	var reportIntervalString, pollIntervalString string
-
-	flag.StringVar(&cfg.ServerAddress, "a", "localhost:8080", "server address")
-	flag.StringVar(&reportIntervalString, "r", "10", "report interval (seconds)")
-	flag.StringVar(&pollIntervalString, "p", "2", "poll interval (seconds)")
-	flag.Parse()
-
-	if address, ok := os.LookupEnv("ADDRESS"); ok {
-		cfg.ServerAddress = address
-	}
-	if reportInterval, ok := os.LookupEnv("REPORT_INTERVAL"); ok {
-		reportIntervalString = reportInterval
-	}
-	if pollInterval, ok := os.LookupEnv("POLL_INTERVAL"); ok {
-		pollIntervalString = pollInterval
-	}
-
-	cfg.ReportInterval = stringToDuration(reportIntervalString)
-	cfg.PollInterval = stringToDuration(pollIntervalString)
-
-	return cfg
+type configAlias struct {
+	AgentConfig
+	ReportInterval int `env:"REPORT_INTERVAL"`
+	PollInterval   int `env:"POLL_INTERVAL"`
 }
 
-func stringToDuration(s string) time.Duration {
-	i, err := strconv.Atoi(s)
-	if err != nil {
-		log.Fatalf("error parsing config value: %v", err)
+func LoadAgentConfig() (*AgentConfig, error) {
+	var cfg configAlias
+
+	flag.StringVar(&cfg.ServerAddress, "a", serverAddressDefault, "server address")
+	flag.IntVar(&cfg.ReportInterval, "r", reportIntervalSecondsDefault, "report interval (seconds)")
+	flag.IntVar(&cfg.PollInterval, "p", pollIntervalSecondsDefault, "poll interval (seconds)")
+	flag.Parse()
+
+	if err := env.Parse(&cfg); err != nil {
+		return nil, err
 	}
-	return time.Duration(i) * time.Second
+
+	result := cfg.AgentConfig
+	result.ReportInterval = time.Duration(cfg.ReportInterval) * time.Second
+	result.PollInterval = time.Duration(cfg.PollInterval) * time.Second
+
+	return &result, nil
 }

@@ -44,7 +44,7 @@ func TestReadJSON(t *testing.T) {
 func doTestRead(t *testing.T, sendRequest sendRequestFunc) {
 	t.Run("Should_return_counter", func(t *testing.T) {
 		store := inmemory.NewMemStorage()
-		store.UpdateCounter("counter1", 12)
+		store.UpdateCounter(t.Context(), "counter1", 12)
 
 		response := sendRequest(store, "counter", "counter1")
 
@@ -58,7 +58,7 @@ func doTestRead(t *testing.T, sendRequest sendRequestFunc) {
 	})
 	t.Run("Should_return_gauge", func(t *testing.T) {
 		store := inmemory.NewMemStorage()
-		store.UpdateGauge("gauge1", 34.56)
+		store.UpdateGauge(t.Context(), "gauge1", 34.56)
 
 		response := sendRequest(store, "gauge", "gauge1")
 
@@ -72,8 +72,8 @@ func doTestRead(t *testing.T, sendRequest sendRequestFunc) {
 	})
 	t.Run("Should_handle_unexisted_metric", func(t *testing.T) {
 		store := inmemory.NewMemStorage()
-		store.UpdateGauge("gauge1", 34.56)
-		store.UpdateCounter("counter1", 12)
+		store.UpdateGauge(t.Context(), "gauge1", 34.56)
+		store.UpdateCounter(t.Context(), "counter1", 12)
 
 		response := sendRequest(store, "gauge", "gauge2")
 
@@ -83,8 +83,8 @@ func doTestRead(t *testing.T, sendRequest sendRequestFunc) {
 	})
 	t.Run("Should_handle_unexisted_metric_type", func(t *testing.T) {
 		store := inmemory.NewMemStorage()
-		store.UpdateGauge("gauge1", 34.56)
-		store.UpdateCounter("counter1", 12)
+		store.UpdateGauge(t.Context(), "gauge1", 34.56)
+		store.UpdateCounter(t.Context(), "counter1", 12)
 
 		response := sendRequest(store, "lolkek", "gauge1")
 

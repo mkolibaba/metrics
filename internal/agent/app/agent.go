@@ -6,10 +6,14 @@ import (
 	"github.com/mkolibaba/metrics/internal/agent/http/client"
 	"github.com/mkolibaba/metrics/internal/agent/sender"
 	"github.com/mkolibaba/metrics/internal/common/log"
+	stdlog "log"
 )
 
 func Run() {
-	cfg := config.MustLoadAgentConfig()
+	cfg, err := config.LoadAgentConfig()
+	if err != nil {
+		stdlog.Fatalf("error creating config: %v", err)
+	}
 
 	logger := log.New()
 
@@ -19,7 +23,7 @@ func Run() {
 	c := collector.NewMetricsCollector(cfg.PollInterval, logger)
 	go c.StartCollect(chGauges, chCounters)
 
-	serverAPI := client.New(cfg.ServerAddress)
+	serverAPI := client.New(cfg.ServerAddress, logger)
 	metricsSender := sender.NewMetricsSender(serverAPI, cfg.ReportInterval, logger)
 
 	logger.Info("running agent")
