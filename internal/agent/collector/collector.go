@@ -1,9 +1,13 @@
 package collector
 
 import (
+	"context"
+	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/mem"
 	"go.uber.org/zap"
 	"math/rand"
 	"runtime"
+	"strconv"
 	"time"
 )
 
@@ -20,21 +24,36 @@ func NewMetricsCollector(pollInterval time.Duration, logger *zap.SugaredLogger) 
 	}
 }
 
-func (m *MetricsCollector) StartCollect(chGauges chan<- map[string]float64, chCounters chan<- map[string]int64) {
-	ticker := time.NewTicker(m.pollInterval)
-	defer ticker.Stop()
-	for range ticker.C {
-		gauges := m.collect()
-		chGauges <- gauges
-		chCounters <- map[string]int64{"PollCount": int64(m.iterations)}
-		m.logger.Debug("metrics has been collected")
-	}
-	close(chGauges)
-	close(chCounters)
+func (m *MetricsCollector) StartCollect(ctx context.Context) (<-chan map[string]float64, <-chan map[string]int64) {
+	chGauges := make(chan map[string]float64, 2)
+	chCounters := make(chan map[string]int64, 1)
+
+	go func() {
+		ticker := time.NewTicker(m.pollInterval)
+		defer ticker.Stop()
+
+	loop:
+		for {
+			select {
+			case <-ticker.C:
+				m.iterations++
+				chGauges <- m.collectGauges()
+				chGauges <- m.collectAdditionalGauges()
+				chCounters <- m.collectCounters()
+				m.logger.Debug("metrics has been collected")
+			case <-ctx.Done():
+				m.logger.Debug("stop collecting")
+				close(chGauges)
+				close(chCounters)
+				break loop
+			}
+		}
+	}()
+
+	return chGauges, chCounters
 }
 
-func (m *MetricsCollector) collect() map[string]float64 {
-	m.iterations++
+func (m *MetricsCollector) collectGauges() map[string]float64 {
 	stats := getMemStats()
 	gauges := make(map[string]float64)
 	gauges["Alloc"] = float64(stats.Alloc)
@@ -66,6 +85,35 @@ func (m *MetricsCollector) collect() map[string]float64 {
 	gauges["TotalAlloc"] = float64(stats.TotalAlloc)
 	gauges["RandomValue"] = rand.Float64()
 	return gauges
+}
+
+func (m *MetricsCollector) collectAdditionalGauges() map[string]float64 {
+	gauges := make(map[string]float64)
+
+	memory, err := mem.VirtualMemory()
+	if err == nil {
+		gauges["TotalMemory"] = float64(memory.Total)
+		gauges["FreeMemory"] = float64(memory.Free)
+	} else {
+		m.logger.Errorf("failed to collect additional memory gauges: %s", err)
+	}
+
+	usagePerCore, err := cpu.Percent(0, true)
+	if err == nil {
+		for i, usage := range usagePerCore {
+			gauges["CPUutilization"+strconv.FormatInt(int64(i+1), 10)] = usage
+		}
+	} else {
+		m.logger.Errorf("failed to collect additional cpu usage gauges: %s", err)
+	}
+
+	return gauges
+}
+
+func (m *MetricsCollector) collectCounters() map[string]int64 {
+	return map[string]int64{
+		"PollCount": int64(m.iterations),
+	}
 }
 
 func getMemStats() *runtime.MemStats {

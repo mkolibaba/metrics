@@ -4,7 +4,7 @@ import (
 	"compress/gzip"
 	"fmt"
 	"github.com/mkolibaba/metrics/internal/server/testutils"
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -29,7 +29,7 @@ func TestShouldCompress(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(fmt.Sprintf("should_compress_%s", c.contentType), func(t *testing.T) {
-			recorder := prepareAndSendRequest(c.contentType, c.responseBody)
+			recorder := prepareAndSendRequest(t, c.contentType, c.responseBody)
 
 			gotContentEncoding := recorder.Header().Get("Content-Encoding")
 			if !strings.Contains(gotContentEncoding, "gzip") {
@@ -47,7 +47,7 @@ func TestShouldNotCompress(t *testing.T) {
 	responseBody := "<root>ok</root>"
 	contentType := "application/xml"
 
-	recorder := prepareAndSendRequest(contentType, responseBody)
+	recorder := prepareAndSendRequest(t, contentType, responseBody)
 
 	if recorder.Header().Get("Content-Encoding") != "" {
 		t.Errorf("expecting header Content-Encoding to be empty, got %s", recorder.Header().Get("Content-Encoding"))
@@ -56,7 +56,7 @@ func TestShouldNotCompress(t *testing.T) {
 	testutils.AssertResponseBody(t, responseBody, recorder.Body)
 }
 
-func prepareAndSendRequest(contentType, responseBody string) *httptest.ResponseRecorder {
+func prepareAndSendRequest(t *testing.T, contentType, responseBody string) *httptest.ResponseRecorder {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", contentType)
 		io.WriteString(w, responseBody)
@@ -68,7 +68,7 @@ func prepareAndSendRequest(contentType, responseBody string) *httptest.ResponseR
 
 	recorder := httptest.NewRecorder()
 
-	Compressor(zap.S())(handler).ServeHTTP(recorder, request)
+	Compressor(zaptest.NewLogger(t).Sugar())(handler).ServeHTTP(recorder, request)
 
 	return recorder
 }

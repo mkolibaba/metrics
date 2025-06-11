@@ -3,7 +3,7 @@ package list
 import (
 	"github.com/mkolibaba/metrics/internal/server/storage/inmemory"
 	"github.com/mkolibaba/metrics/internal/server/testutils"
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -44,6 +44,6 @@ func sendRequest(t *testing.T, getter AllMetricsGetter) *httptest.ResponseRecord
 	t.Helper()
 
 	request := httptest.NewRequest(http.MethodGet, "/", nil)
-	server := testutils.NewTestServer("GET /", New(getter, zap.S()))
+	server := testutils.NewTestServer("GET /", New(getter, zaptest.NewLogger(t).Sugar()))
 	return server.Execute(request)
 }
