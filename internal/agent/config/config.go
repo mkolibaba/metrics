@@ -10,6 +10,7 @@ const (
 	serverAddressDefault         = "localhost:8080"
 	reportIntervalSecondsDefault = 10
 	pollIntervalSecondsDefault   = 10
+	rateLimitDefault             = 100
 )
 
 type AgentConfig struct {
@@ -17,6 +18,7 @@ type AgentConfig struct {
 	ReportInterval time.Duration
 	PollInterval   time.Duration
 	Key            string `env:"KEY"`
+	RateLimit      int    `env:"RATE_LIMIT"`
 }
 
 type configAlias struct {
@@ -32,6 +34,7 @@ func LoadAgentConfig() (*AgentConfig, error) {
 	flag.IntVar(&cfg.ReportInterval, "r", reportIntervalSecondsDefault, "report interval (seconds)")
 	flag.IntVar(&cfg.PollInterval, "p", pollIntervalSecondsDefault, "poll interval (seconds)")
 	flag.StringVar(&cfg.Key, "k", "", "hash key")
+	flag.IntVar(&cfg.RateLimit, "l", rateLimitDefault, "rate limit")
 	flag.Parse()
 
 	if err := env.Parse(&cfg); err != nil {

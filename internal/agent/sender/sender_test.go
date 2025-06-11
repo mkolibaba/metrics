@@ -1,7 +1,7 @@
 package sender
 
 import (
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 	"testing"
 	"time"
 )
@@ -15,11 +15,11 @@ func TestStartSend(t *testing.T) {
 	chCounters := make(chan map[string]int64, 1)
 
 	// Create sender with short report interval for testing
-	sender := NewMetricsSender(serverAPI, 100*time.Millisecond, zap.S())
+	sender := NewMetricsSender(serverAPI, 100*time.Millisecond, 10, zaptest.NewLogger(t).Sugar())
 
 	// Start sending in a goroutine
 	go func() {
-		sender.StartSend(chGauges, chCounters)
+		sender.StartSend(t.Context(), chGauges, chCounters)
 	}()
 
 	// Send test metrics

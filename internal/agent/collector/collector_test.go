@@ -1,21 +1,17 @@
 package collector
 
 import (
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 	"testing"
 	"time"
 )
 
 func TestMetricsCollector_StartCollect(t *testing.T) {
 	// Create a collector with a short poll interval for testing
-	collector := NewMetricsCollector(100*time.Millisecond, zap.S())
-
-	// Create channels for gauges and counters
-	chGauges := make(chan map[string]float64, 1)
-	chCounters := make(chan map[string]int64, 1)
+	collector := NewMetricsCollector(100*time.Millisecond, zaptest.NewLogger(t).Sugar())
 
 	// Start collecting in a goroutine
-	go collector.StartCollect(chGauges, chCounters)
+	chGauges, chCounters := collector.StartCollect(t.Context())
 
 	// Wait for first collection
 	time.Sleep(350 * time.Millisecond)
