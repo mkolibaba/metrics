@@ -16,6 +16,7 @@ type AgentConfig struct {
 	ServerAddress  string `env:"ADDRESS"`
 	ReportInterval time.Duration
 	PollInterval   time.Duration
+	Key            string `env:"KEY"`
 }
 
 type configAlias struct {
@@ -30,6 +31,7 @@ func LoadAgentConfig() (*AgentConfig, error) {
 	flag.StringVar(&cfg.ServerAddress, "a", serverAddressDefault, "server address")
 	flag.IntVar(&cfg.ReportInterval, "r", reportIntervalSecondsDefault, "report interval (seconds)")
 	flag.IntVar(&cfg.PollInterval, "p", pollIntervalSecondsDefault, "poll interval (seconds)")
+	flag.StringVar(&cfg.Key, "k", "", "hash key")
 	flag.Parse()
 
 	if err := env.Parse(&cfg); err != nil {

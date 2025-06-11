@@ -6,6 +6,7 @@ import (
 	"time"
 )
 
+//go:generate moq -stub -out server_api_mock.go . ServerAPI
 type ServerAPI interface {
 	UpdateCounters(counters map[string]int64) error
 	UpdateGauges(gauges map[string]float64) error
