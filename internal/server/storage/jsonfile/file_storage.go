@@ -3,6 +3,8 @@ package jsonfile
 import (
 	"context"
 	"fmt"
+	"github.com/mkolibaba/metrics/internal/common/retry"
+	"github.com/mkolibaba/metrics/internal/server/storage"
 	"github.com/mkolibaba/metrics/internal/server/storage/inmemory"
 	"go.uber.org/zap"
 	"os"
@@ -36,8 +38,22 @@ func (f *FileStorage) UpdateCounter(ctx context.Context, name string, value int6
 	return f.MemStorage.UpdateCounter(ctx, name, value)
 }
 
+func (f *FileStorage) UpdateGauges(ctx context.Context, values []storage.Gauge) error {
+	if f.instantSync {
+		defer f.save()
+	}
+	return f.MemStorage.UpdateGauges(ctx, values)
+}
+
+func (f *FileStorage) UpdateCounters(ctx context.Context, values []storage.Counter) error {
+	if f.instantSync {
+		defer f.save()
+	}
+	return f.MemStorage.UpdateCounters(ctx, values)
+}
+
 func NewFileStorage(path string, storeInterval time.Duration, shouldRestore bool, logger *zap.SugaredLogger) (*FileStorage, error) {
-	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0666)
+	file, err := tryOpenFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("error opening file %s: %v", path, err)
 	}
@@ -121,4 +137,10 @@ func newUnderlyingStorage(db FileDatabase, shouldRestore bool) (*inmemory.MemSto
 		}
 	}
 	return store, nil
+}
+
+func tryOpenFile(path string) (*os.File, error) {
+	return retry.DoWithReturn(func() (*os.File, error) {
+		return os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0666)
+	})
 }

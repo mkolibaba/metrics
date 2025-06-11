@@ -9,8 +9,8 @@ import (
 	"encoding/json"
 	"github.com/go-resty/resty/v2"
 	"github.com/mkolibaba/metrics/internal/common/http/model"
+	"github.com/mkolibaba/metrics/internal/common/retry"
 	"go.uber.org/zap"
-	"time"
 )
 
 type ServerClient struct {
@@ -22,9 +22,6 @@ type ServerClient struct {
 func New(serverAddress, hashKey string, logger *zap.SugaredLogger) *ServerClient {
 	client := resty.New().
 		SetBaseURL("http://" + serverAddress).
-		SetRetryCount(3).
-		SetRetryWaitTime(1 * time.Second).
-		SetRetryMaxWaitTime(5 * time.Second).
 		SetLogger(logger)
 	return &ServerClient{
 		client:  client,
@@ -79,6 +76,8 @@ func (s *ServerClient) sendMetric(body []model.Metrics) error {
 		request.SetHeader("HashSHA256", base64.StdEncoding.EncodeToString(hash.Sum(nil)))
 	}
 
-	_, err := request.Post("/updates/")
-	return err
+	return retry.Do(func() error {
+		_, err := request.Post("/updates/")
+		return err
+	})
 }

@@ -3,6 +3,7 @@ package update
 import (
 	"context"
 	"encoding/json"
+	"github.com/mkolibaba/metrics/internal/server/storage"
 	"net/http"
 	"strconv"
 
@@ -15,6 +16,9 @@ import (
 type MetricsUpdater interface {
 	UpdateGauge(ctx context.Context, name string, value float64) (float64, error)
 	UpdateCounter(ctx context.Context, name string, value int64) (int64, error)
+
+	UpdateGauges(ctx context.Context, values []storage.Gauge) error
+	UpdateCounters(ctx context.Context, values []storage.Counter) error
 }
 
 type API struct {
@@ -63,10 +67,6 @@ func (a *API) HandlePlain(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) HandleJSON(w http.ResponseWriter, r *http.Request) {
-	if r.Header.Get("Content-Type") != "application/json" {
-		w.WriteHeader(http.StatusUnsupportedMediaType)
-		return
-	}
 	w.Header().Set("Content-Type", "application/json")
 
 	requestBody := &model.Metrics{}
@@ -101,10 +101,6 @@ func (a *API) HandleJSON(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) HandleJSONBatch(w http.ResponseWriter, r *http.Request) {
-	if r.Header.Get("Content-Type") != "application/json" {
-		w.WriteHeader(http.StatusUnsupportedMediaType)
-		return
-	}
 	w.Header().Set("Content-Type", "application/json")
 
 	var requestBody []model.Metrics
@@ -114,25 +110,32 @@ func (a *API) HandleJSONBatch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	gauges := make([]storage.Gauge, 0)
+	counters := make([]storage.Counter, 0)
 	for _, metrics := range requestBody {
-		t := metrics.MType
-		name := metrics.ID
-
-		switch t {
+		switch metrics.MType {
 		case handlers.MetricGauge:
-			_, err := a.updater.UpdateGauge(r.Context(), name, *metrics.Value)
-			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
+			gauges = append(gauges, storage.Gauge{Name: metrics.ID, Value: *metrics.Value})
 		case handlers.MetricCounter:
-			_, err := a.updater.UpdateCounter(r.Context(), name, *metrics.Delta)
-			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
+			counters = append(counters, storage.Counter{Name: metrics.ID, Value: *metrics.Delta})
 		default:
 			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+	}
+
+	if len(gauges) > 0 {
+		err := a.updater.UpdateGauges(r.Context(), gauges)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+	}
+
+	if len(counters) > 0 {
+		err := a.updater.UpdateCounters(r.Context(), counters)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 	}

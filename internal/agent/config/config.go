@@ -6,6 +6,12 @@ import (
 	"time"
 )
 
+const (
+	serverAddressDefault         = "localhost:8080"
+	reportIntervalSecondsDefault = 10
+	pollIntervalSecondsDefault   = 10
+)
+
 type AgentConfig struct {
 	ServerAddress  string `env:"ADDRESS"`
 	ReportInterval time.Duration
@@ -22,9 +28,9 @@ type configAlias struct {
 func LoadAgentConfig() (*AgentConfig, error) {
 	var cfg configAlias
 
-	flag.StringVar(&cfg.ServerAddress, "a", "localhost:8080", "server address")
-	flag.IntVar(&cfg.ReportInterval, "r", 10, "report interval (seconds)")
-	flag.IntVar(&cfg.PollInterval, "p", 2, "poll interval (seconds)")
+	flag.StringVar(&cfg.ServerAddress, "a", serverAddressDefault, "server address")
+	flag.IntVar(&cfg.ReportInterval, "r", reportIntervalSecondsDefault, "report interval (seconds)")
+	flag.IntVar(&cfg.PollInterval, "p", pollIntervalSecondsDefault, "poll interval (seconds)")
 	flag.StringVar(&cfg.Key, "k", "", "hash key")
 	flag.Parse()
 

@@ -10,7 +10,10 @@ import (
 )
 
 func Run() {
-	cfg := mustCreateConfig()
+	cfg, err := config.LoadAgentConfig()
+	if err != nil {
+		stdlog.Fatalf("error creating config: %v", err)
+	}
 
 	logger := log.New()
 
@@ -26,12 +29,4 @@ func Run() {
 	logger.Info("running agent")
 
 	metricsSender.StartSend(chGauges, chCounters)
-}
-
-func mustCreateConfig() *config.AgentConfig {
-	cfg, err := config.LoadAgentConfig()
-	if err != nil {
-		stdlog.Fatalf("error creating config: %v", err)
-	}
-	return cfg
 }

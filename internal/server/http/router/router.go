@@ -26,17 +26,18 @@ func New(store MetricsStorage, db *sql.DB, hashKey string, logger *zap.SugaredLo
 		r.Use(middleware.Hash(hashKey, logger))
 	}
 	r.Use(middleware.Compressor(logger))
+	jsonContentTypeMiddleware := middleware.ContentType("application/json")
 
 	// read
 	r.Get("/", list.New(store, logger))
 	r.Get("/value/{type}/{name}", read.New(store, logger))
-	r.Post("/value/", read.NewJSON(store))
+	r.With(jsonContentTypeMiddleware).Post("/value/", read.NewJSON(store))
 
 	// update
 	updateAPI := update.NewAPI(store, logger)
 	r.Post("/update/{type}/{name}/{value}", updateAPI.HandlePlain)
-	r.Post("/update/", updateAPI.HandleJSON)
-	r.Post("/updates/", updateAPI.HandleJSONBatch)
+	r.With(jsonContentTypeMiddleware).Post("/update/", updateAPI.HandleJSON)
+	r.With(jsonContentTypeMiddleware).Post("/updates/", updateAPI.HandleJSONBatch)
 
 	// other
 	r.Get("/ping", ping.New(db))

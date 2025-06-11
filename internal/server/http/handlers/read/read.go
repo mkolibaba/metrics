@@ -65,10 +65,6 @@ func NewJSON(getter MetricsGetter) http.HandlerFunc {
 		}
 	}
 	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("Content-Type") != "application/json" {
-			w.WriteHeader(http.StatusUnsupportedMediaType)
-			return
-		}
 		w.Header().Set("Content-Type", "application/json")
 
 		requestBody := &model.Metrics{}
