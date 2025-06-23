@@ -50,30 +50,33 @@ func (m *MetricsSender) StartSend(
 		}
 	}
 
-loop:
 	for {
 		select {
 		case <-ticker.C:
 			m.logger.Debug("starting to send metrics to server")
 
-			aggregated := m.aggregate(chGauges, chCounters)
+			aggregated := m.aggregate(ctx, chGauges, chCounters)
 			for i := 0; i < m.reportRateLimit; i++ {
 				go worker(aggregated)
 			}
 		case <-ctx.Done():
-			break loop
+			return
 		}
 	}
 }
 
 func (m *MetricsSender) aggregate(
+	ctx context.Context,
 	chGauges <-chan map[string]float64,
 	chCounters <-chan map[string]int64,
 ) <-chan func() error {
 	c := make(chan func() error)
+	closeC := func() {
+		m.logger.Debug("closing aggregating channel")
+		close(c)
+	}
 
 	go func() {
-	loop:
 		for {
 			select {
 			// вычитываем все из канала gauges
@@ -96,11 +99,13 @@ func (m *MetricsSender) aggregate(
 					}
 					return nil
 				}
+			case <-ctx.Done():
+				closeC()
+				return
 			// все значение вычитаны, агрегирующий канал можно закрывать
 			default:
-				m.logger.Debug("closing aggregating channel")
-				close(c)
-				break loop
+				closeC()
+				return
 			}
 		}
 	}()
