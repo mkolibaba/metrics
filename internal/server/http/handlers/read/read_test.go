@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/mkolibaba/metrics/internal/server/storage/inmemory"
 	"github.com/mkolibaba/metrics/internal/server/testutils"
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -20,7 +20,7 @@ func TestReadText(t *testing.T) {
 		url := fmt.Sprintf("/value/%s/%s", tp, name)
 		request := httptest.NewRequest(http.MethodGet, url, nil)
 
-		server := testutils.NewTestServer("GET /value/{type}/{name}", New(getter, zap.S()))
+		server := testutils.NewTestServer("GET /value/{type}/{name}", New(getter, zaptest.NewLogger(t).Sugar()))
 		return server.Execute(request)
 	}
 

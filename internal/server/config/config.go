@@ -19,6 +19,7 @@ type ServerConfig struct {
 	FileStoragePath string `env:"FILE_STORAGE_PATH"`
 	Restore         bool   `env:"RESTORE"`
 	DatabaseDSN     string `env:"DATABASE_DSN"`
+	Key             string `env:"KEY"`
 }
 type configAlias struct {
 	ServerConfig
@@ -33,6 +34,7 @@ func LoadServerConfig() (*ServerConfig, error) {
 	flag.StringVar(&cfg.FileStoragePath, fileStoragePathDefault, "db.json", "file storage path")
 	flag.BoolVar(&cfg.Restore, "r", restoreDefault, "restore")
 	flag.StringVar(&cfg.DatabaseDSN, "d", "", "server address")
+	flag.StringVar(&cfg.Key, "k", "", "hash key")
 	flag.Parse()
 
 	if err := env.Parse(&cfg); err != nil {

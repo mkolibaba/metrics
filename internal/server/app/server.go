@@ -41,7 +41,7 @@ func Run() {
 	}
 	defer closeFn()
 
-	r := router.New(store, db, logger)
+	r := router.New(store, db, cfg.Key, logger)
 
 	logger.Infof("running server on %s", cfg.ServerAddress)
 	if err := http.ListenAndServe(cfg.ServerAddress, r); err != nil {

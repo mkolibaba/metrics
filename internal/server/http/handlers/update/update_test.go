@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/mkolibaba/metrics/internal/server/storage/inmemory"
 	"github.com/mkolibaba/metrics/internal/server/testutils"
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -222,7 +222,7 @@ func sendUpdateRequestJSON(t *testing.T, updater MetricsUpdater, body string) *h
 	request := httptest.NewRequest(http.MethodPost, "/update/", strings.NewReader(body))
 	request.Header.Set("Content-Type", "application/json")
 
-	api := NewAPI(updater, zap.S())
+	api := NewAPI(updater, zaptest.NewLogger(t).Sugar())
 	server := testutils.NewTestServer("POST /update/", http.HandlerFunc(api.HandleJSON))
 	return server.Execute(request)
 }
@@ -232,7 +232,7 @@ func sendUpdateRequest(t *testing.T, updater MetricsUpdater, url string) *httpte
 
 	request := httptest.NewRequest(http.MethodPost, url, nil)
 
-	api := NewAPI(updater, zap.S())
+	api := NewAPI(updater, zaptest.NewLogger(t).Sugar())
 	server := testutils.NewTestServer("POST /update/{type}/{name}/{value}", http.HandlerFunc(api.HandlePlain))
 	return server.Execute(request)
 }

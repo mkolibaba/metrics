@@ -17,11 +17,14 @@ type MetricsStorage interface {
 	update.MetricsUpdater
 }
 
-func New(store MetricsStorage, db *sql.DB, logger *zap.SugaredLogger) chi.Router {
+func New(store MetricsStorage, db *sql.DB, hashKey string, logger *zap.SugaredLogger) chi.Router {
 	r := chi.NewRouter()
 
 	// middleware
 	r.Use(middleware.Logger(logger))
+	if hashKey != "" {
+		r.Use(middleware.Hash(hashKey, logger))
+	}
 	r.Use(middleware.Compressor(logger))
 	jsonContentTypeMiddleware := middleware.ContentType("application/json")
 
