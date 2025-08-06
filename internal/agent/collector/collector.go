@@ -88,7 +88,7 @@ func (m *MetricsCollector) collectGauges() map[string]float64 {
 }
 
 func (m *MetricsCollector) collectAdditionalGauges() map[string]float64 {
-	gauges := make(map[string]float64)
+	gauges := make(map[string]float64, 10)
 
 	memory, err := mem.VirtualMemory()
 	if err == nil {
@@ -101,7 +101,7 @@ func (m *MetricsCollector) collectAdditionalGauges() map[string]float64 {
 	usagePerCore, err := cpu.Percent(0, true)
 	if err == nil {
 		for i, usage := range usagePerCore {
-			gauges["CPUutilization"+strconv.FormatInt(int64(i+1), 10)] = usage
+			gauges["CPUutilization"+strconv.Itoa(i+1)] = usage
 		}
 	} else {
 		m.logger.Errorf("failed to collect additional cpu usage gauges: %s", err)

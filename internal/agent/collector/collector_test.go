@@ -1,9 +1,10 @@
 package collector
 
 import (
-	"go.uber.org/zap/zaptest"
 	"testing"
 	"time"
+
+	"go.uber.org/zap/zaptest"
 )
 
 func TestMetricsCollector_StartCollect(t *testing.T) {
@@ -40,5 +41,13 @@ func TestMetricsCollector_StartCollect(t *testing.T) {
 		}
 	case <-time.After(200 * time.Millisecond):
 		t.Error("Timeout waiting for counter metrics")
+	}
+}
+
+func BenchmarkMetricsCollector_CollectAdditionalGauges(b *testing.B) {
+	collector := NewMetricsCollector(100*time.Millisecond, zaptest.NewLogger(b).Sugar())
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = collector.collectAdditionalGauges()
 	}
 }
