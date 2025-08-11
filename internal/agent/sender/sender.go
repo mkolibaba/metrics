@@ -1,18 +1,25 @@
+// Package sender предоставляет компоненты для периодической отправки
+// собранных метрик на сервер.
 package sender
 
 import (
 	"context"
 	"fmt"
-	"go.uber.org/zap"
 	"time"
+
+	"go.uber.org/zap"
 )
 
+// ServerAPI описывает клиентский интерфейс для отправки метрик на сервер.
+// Реализация должна уметь передавать счётчики и gauge метрики.
+//
 //go:generate moq -stub -out server_api_mock.go . ServerAPI
 type ServerAPI interface {
 	UpdateCounters(counters map[string]int64) error
 	UpdateGauges(gauges map[string]float64) error
 }
 
+// MetricsSender выполняет периодическую отправку метрик на сервер.
 type MetricsSender struct {
 	serverAPI       ServerAPI
 	reportInterval  time.Duration
@@ -20,6 +27,8 @@ type MetricsSender struct {
 	logger          *zap.SugaredLogger
 }
 
+// NewMetricsSender создаёт и настраивает отправитель метрик.
+// reportInterval — период отправки, reportRateLimit — число параллельных воркеров для отправки.
 func NewMetricsSender(
 	serverAPI ServerAPI,
 	reportInterval time.Duration,
@@ -34,6 +43,10 @@ func NewMetricsSender(
 	}
 }
 
+// StartSend запускает цикл отправки метрик на сервер. Метод принимает
+// каналы gauge метрик (map[string]float64) и counter метрик
+// (map[string]int64), агрегирует задачи отправки и выполняет их
+// указанным числом воркеров. Останавливается при отмене контекста.
 func (m *MetricsSender) StartSend(
 	ctx context.Context,
 	chGauges <-chan map[string]float64,
