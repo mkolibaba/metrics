@@ -5,6 +5,9 @@ import (
 	"strings"
 )
 
+// ContentType проверяет заголовок Content-Type входящих запросов и
+// допускает только перечисленные значения. В противном случае
+// возвращает статус 415 Unsupported Media Type.
 func ContentType(allowedContentTypes ...string) func(http.Handler) http.Handler {
 	allowed := make(map[string]struct{}, len(allowedContentTypes))
 	for _, t := range allowedContentTypes {

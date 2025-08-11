@@ -2,10 +2,11 @@ package middleware
 
 import (
 	"compress/gzip"
-	"go.uber.org/zap"
 	"io"
 	"net/http"
 	"strings"
+
+	"go.uber.org/zap"
 )
 
 var supportedContentTypes = map[string]struct{}{
@@ -22,6 +23,9 @@ func (g *gzipWriter) Write(p []byte) (n int, err error) {
 	return g.delegate.Write(p)
 }
 
+// Compressor добавляет поддержку gzip-сжатия для ответов и
+// распаковку gzip тел входящих запросов. Сжимает только поддерживаемые
+// типы содержимого и прозрачно проксирует обработчик.
 func Compressor(logger *zap.SugaredLogger) func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

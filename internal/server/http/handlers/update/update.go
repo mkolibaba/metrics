@@ -3,9 +3,10 @@ package update
 import (
 	"context"
 	"encoding/json"
-	"github.com/mkolibaba/metrics/internal/server/storage"
 	"net/http"
 	"strconv"
+
+	"github.com/mkolibaba/metrics/internal/server/storage"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/mkolibaba/metrics/internal/common/http/model"
@@ -26,6 +27,7 @@ type API struct {
 	logger  *zap.SugaredLogger
 }
 
+// NewAPI создаёт HTTP API для обновления метрик.
 func NewAPI(updater MetricsUpdater, logger *zap.SugaredLogger) *API {
 	return &API{
 		updater: updater,
@@ -33,6 +35,8 @@ func NewAPI(updater MetricsUpdater, logger *zap.SugaredLogger) *API {
 	}
 }
 
+// HandlePlain обрабатывает обновление метрик через путь
+// /update/{type}/{name}/{value} и возвращает соответствующие коды статусов.
 func (a *API) HandlePlain(w http.ResponseWriter, r *http.Request) {
 	t := chi.URLParam(r, "type")
 	name := chi.URLParam(r, "name")
@@ -66,6 +70,8 @@ func (a *API) HandlePlain(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// HandleJSON обрабатывает обновление одной метрики из JSON тела
+// и возвращает обновлённое значение в JSON.
 func (a *API) HandleJSON(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -100,6 +106,8 @@ func (a *API) HandleJSON(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// HandleJSONBatch обрабатывает обновление набора метрик из массива JSON
+// без тела ответа. Возвращает 400 при некорректном формате.
 func (a *API) HandleJSONBatch(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
