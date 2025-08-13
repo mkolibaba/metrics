@@ -17,6 +17,10 @@ type MetricsStorage interface {
 	update.MetricsUpdater
 }
 
+// New создает и настраивает новый chi.Router.
+// Роутер включает в себя middleware для логирования, подписи, сжатия
+// и проверки Content-Type, а также регистрирует обработчики
+// для всех эндпоинтов сервера метрик.
 func New(store MetricsStorage, db *sql.DB, hashKey string, logger *zap.SugaredLogger) chi.Router {
 	r := chi.NewRouter()
 
