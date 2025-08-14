@@ -3,10 +3,11 @@ package list
 import (
 	"context"
 	"fmt"
-	"go.uber.org/zap"
 	"io"
 	"net/http"
 	"strings"
+
+	"go.uber.org/zap"
 )
 
 const pageTemplate = "<!DOCTYPE html><html><body>%s</body></html>"
@@ -16,6 +17,8 @@ type AllMetricsGetter interface {
 	GetCounters(ctx context.Context) (map[string]int64, error)
 }
 
+// New возвращает обработчик, который выводит список всех доступных
+// метрик (gauge и counter) в виде HTML-страницы.
 func New(getter AllMetricsGetter, logger *zap.SugaredLogger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")

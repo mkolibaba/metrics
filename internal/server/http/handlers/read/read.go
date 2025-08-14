@@ -4,14 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
+	"net/http"
+	"strconv"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/mkolibaba/metrics/internal/common/http/model"
 	"github.com/mkolibaba/metrics/internal/server/http/handlers"
 	"github.com/mkolibaba/metrics/internal/server/storage"
 	"go.uber.org/zap"
-	"io"
-	"net/http"
-	"strconv"
 )
 
 type MetricsGetter interface {
@@ -19,6 +20,9 @@ type MetricsGetter interface {
 	GetCounter(ctx context.Context, name string) (int64, error)
 }
 
+// New возвращает обработчик, который по пути /value/{type}/{name}
+// возвращает значение метрики в текстовом виде. Возвращает 404,
+// если метрика не найдена.
 func New(getter MetricsGetter, logger *zap.SugaredLogger) http.HandlerFunc {
 	writeResponse := func(w http.ResponseWriter, text string) {
 		_, err := io.WriteString(w, text)
@@ -52,6 +56,8 @@ func New(getter MetricsGetter, logger *zap.SugaredLogger) http.HandlerFunc {
 	}
 }
 
+// NewJSON возвращает обработчик, ожидающий POST JSON тела с описанием
+// метрики и возвращающий её значение в JSON-формате.
 func NewJSON(getter MetricsGetter) http.HandlerFunc {
 	writeResponse := func(w http.ResponseWriter, t, name string, counter *int64, gauge *float64) {
 		responseBody := model.Metrics{

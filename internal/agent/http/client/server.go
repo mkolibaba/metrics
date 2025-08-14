@@ -1,3 +1,5 @@
+// Package client предоставляет HTTP‑клиент для отправки батчей метрик
+// на сервер метрик.
 package client
 
 import (
@@ -7,18 +9,23 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+
 	"github.com/go-resty/resty/v2"
 	"github.com/mkolibaba/metrics/internal/common/http/model"
 	"github.com/mkolibaba/metrics/internal/common/retry"
 	"go.uber.org/zap"
 )
 
+// ServerClient включает в себя HTTP‑клиент и параметры запросов
+// для взаимодействия с сервером метрик.
 type ServerClient struct {
 	client  *resty.Client
 	hashKey string
 	logger  *zap.SugaredLogger
 }
 
+// New создаёт новый клиент для отправки метрик на указанный адрес сервера.
+// serverAddress - адрес сервера, hashKey — ключ хедера HashSHA256, logger — логгер.
 func New(serverAddress, hashKey string, logger *zap.SugaredLogger) *ServerClient {
 	client := resty.New().
 		SetBaseURL("http://" + serverAddress).
@@ -30,6 +37,7 @@ func New(serverAddress, hashKey string, logger *zap.SugaredLogger) *ServerClient
 	}
 }
 
+// UpdateCounters отправляет на сервер counter метрики.
 func (s *ServerClient) UpdateCounters(counters map[string]int64) error {
 	metrics := make([]model.Metrics, 0, len(counters))
 	for name, delta := range counters {
@@ -42,6 +50,7 @@ func (s *ServerClient) UpdateCounters(counters map[string]int64) error {
 	return s.sendMetric(metrics)
 }
 
+// UpdateGauges отправляет на сервер gauge метрик.
 func (s *ServerClient) UpdateGauges(gauges map[string]float64) error {
 	metrics := make([]model.Metrics, 0, len(gauges))
 	for name, value := range gauges {

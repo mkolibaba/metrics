@@ -26,6 +26,8 @@ type configAlias struct {
 	StoreInterval int `env:"STORE_INTERVAL"`
 }
 
+// LoadServerConfig загружает конфигурацию сервера из переменных окружения и флагов командной строки.
+// Флаги имеют приоритет над переменными окружения.
 func LoadServerConfig() (*ServerConfig, error) {
 	var cfg configAlias
 

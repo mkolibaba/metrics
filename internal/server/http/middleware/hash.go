@@ -6,11 +6,13 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
-	"go.uber.org/zap"
 	"io"
 	"net/http"
+
+	"go.uber.org/zap"
 )
 
+// HeaderHashSHA256 — имя заголовка с HMAC-SHA256 подписью тела.
 const HeaderHashSHA256 = "HashSHA256"
 
 type hashWriter struct {
@@ -35,6 +37,9 @@ func (h *hashWriter) Write(p []byte) (int, error) {
 	return n, nil
 }
 
+// Hash проверяет подпись тела входящего запроса (если заголовок присутствует)
+// и добавляет подпись к исходящему ответу. Для вычисления используется
+// HMAC-SHA256 с переданным ключом.
 func Hash(hashKey string, logger *zap.SugaredLogger) func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

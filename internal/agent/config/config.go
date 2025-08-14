@@ -27,6 +27,8 @@ type configAlias struct {
 	PollInterval   int `env:"POLL_INTERVAL"`
 }
 
+// LoadAgentConfig загружает конфигурацию агента из переменных окружения и флагов командной строки.
+// Флаги имеют приоритет над переменными окружения.
 func LoadAgentConfig() (*AgentConfig, error) {
 	var cfg configAlias
 

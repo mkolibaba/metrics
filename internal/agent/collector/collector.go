@@ -1,22 +1,29 @@
+// Package collector предоставляет сборщик системных и runtime-метрик
+// приложения и периодически отправляет их через каналы.
 package collector
 
 import (
 	"context"
-	"github.com/shirou/gopsutil/v4/cpu"
-	"github.com/shirou/gopsutil/v4/mem"
-	"go.uber.org/zap"
 	"math/rand"
 	"runtime"
 	"strconv"
 	"time"
+
+	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/mem"
+	"go.uber.org/zap"
 )
 
+// MetricsCollector выполняет периодический сбор метрик runtime и ОС.
+// Создаётся через NewMetricsCollector и управляется контекстом.
 type MetricsCollector struct {
 	iterations   int
 	pollInterval time.Duration
 	logger       *zap.SugaredLogger
 }
 
+// NewMetricsCollector создаёт и возвращает новый экземпляр сборщика метрик.
+// pollInterval задаёт период опроса, logger используется для логирования.
 func NewMetricsCollector(pollInterval time.Duration, logger *zap.SugaredLogger) *MetricsCollector {
 	return &MetricsCollector{
 		pollInterval: pollInterval,
@@ -24,6 +31,8 @@ func NewMetricsCollector(pollInterval time.Duration, logger *zap.SugaredLogger) 
 	}
 }
 
+// StartCollect запускает цикл сбора метрик и возвращает два канала: для gauge метрик (map[string]float64)
+// и counter метрик (map[string]int64). Сбор прекращается при отмене переданного контекста.
 func (m *MetricsCollector) StartCollect(ctx context.Context) (<-chan map[string]float64, <-chan map[string]int64) {
 	chGauges := make(chan map[string]float64, 2)
 	chCounters := make(chan map[string]int64, 1)
@@ -88,7 +97,7 @@ func (m *MetricsCollector) collectGauges() map[string]float64 {
 }
 
 func (m *MetricsCollector) collectAdditionalGauges() map[string]float64 {
-	gauges := make(map[string]float64)
+	gauges := make(map[string]float64, 10)
 
 	memory, err := mem.VirtualMemory()
 	if err == nil {
@@ -101,7 +110,7 @@ func (m *MetricsCollector) collectAdditionalGauges() map[string]float64 {
 	usagePerCore, err := cpu.Percent(0, true)
 	if err == nil {
 		for i, usage := range usagePerCore {
-			gauges["CPUutilization"+strconv.FormatInt(int64(i+1), 10)] = usage
+			gauges["CPUutilization"+strconv.Itoa(i+1)] = usage
 		}
 	} else {
 		m.logger.Errorf("failed to collect additional cpu usage gauges: %s", err)
