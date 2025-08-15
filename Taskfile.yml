@@ -6,6 +6,7 @@ vars:
   PORT: 12345
   BIN_AGENT_PATH: bin/agent
   BIN_SERVER_PATH: bin/server
+  BIN_STATICLINT_PATH: bin/staticlint
   BIN_STATICTEST_PATH: bin/statictest
   BIN_METRICSTEST_PATH: bin/metricstest
 
@@ -48,6 +49,12 @@ tasks:
     cmds:
       - go vet -vettool={{.BIN_STATICTEST_PATH}} ./...
 
+  run-staticlint:
+    deps:
+      - build-staticlint
+    cmds:
+      - go vet -vettool={{.BIN_STATICLINT_PATH}} ./...
+
   run-metricstest:
     deps:
       - download-metricstest
@@ -87,6 +94,10 @@ tasks:
   build-server:
     cmds:
       - go build -buildvcs=false -o {{.BIN_SERVER_PATH}} cmd/server/main.go
+
+  build-staticlint:
+    cmds:
+      - go build -buildvcs=false -o {{.BIN_STATICLINT_PATH}} cmd/staticlint/main.go
 
   iter1:
     internal: true
