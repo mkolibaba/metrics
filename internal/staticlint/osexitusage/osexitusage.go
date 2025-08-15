@@ -1,3 +1,5 @@
+// Package osexitusage реализует анализатор, запрещающий
+// использовать прямой вызов os.Exit в функции main пакета main.
 package osexitusage
 
 import (
