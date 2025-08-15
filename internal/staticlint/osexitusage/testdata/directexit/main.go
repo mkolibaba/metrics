@@ -1,4 +1,4 @@
-package directexit
+package main
 
 import (
 	. "os"

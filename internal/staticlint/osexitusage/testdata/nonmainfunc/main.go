@@ -1,4 +1,4 @@
-package nonmain
+package main
 
 import "os"
 

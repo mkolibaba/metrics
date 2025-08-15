@@ -1,4 +1,4 @@
-package withosexit
+package main
 
 import "os"
 

@@ -2,6 +2,7 @@ package osexitusage
 
 import (
 	"go/ast"
+	"go/types"
 	"golang.org/x/tools/go/analysis"
 )
 
@@ -20,6 +21,10 @@ var Analyzer = &analysis.Analyzer{
 
 func run(pass *analysis.Pass) (interface{}, error) {
 	for _, file := range pass.Files {
+		if file.Name.Name != "main" {
+			continue
+		}
+
 		ast.Inspect(file, func(n ast.Node) bool {
 			switch x := n.(type) {
 			case *ast.FuncDecl:
@@ -27,7 +32,7 @@ func run(pass *analysis.Pass) (interface{}, error) {
 					return false
 				}
 			case *ast.CallExpr:
-				if isOSExitInMain(x) {
+				if isOSExitInMain(x, pass.TypesInfo) {
 					pass.Reportf(x.Pos(), usageWarning)
 				}
 			}
@@ -37,7 +42,7 @@ func run(pass *analysis.Pass) (interface{}, error) {
 	return nil, nil
 }
 
-func isOSExitInMain(x *ast.CallExpr) bool {
+func isOSExitInMain(x *ast.CallExpr, info *types.Info) bool {
 	switch f := x.Fun.(type) {
 	case *ast.SelectorExpr:
 		if ident, ok := f.X.(*ast.Ident); ok {
@@ -47,7 +52,9 @@ func isOSExitInMain(x *ast.CallExpr) bool {
 		}
 	case *ast.Ident:
 		if f.Name == exitFunctionName {
-			// TODO: дописать кейс
+			if obj, ok := info.Uses[f]; ok && obj.Pkg().Name() == osPackageName {
+				return true
+			}
 		}
 	}
 

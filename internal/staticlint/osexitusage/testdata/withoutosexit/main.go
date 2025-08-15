@@ -1,4 +1,4 @@
-package withoutosexit
+package main
 
 import "fmt"
 
