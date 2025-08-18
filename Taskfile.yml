@@ -89,11 +89,11 @@ tasks:
 
   build-agent:
     cmds:
-      - go build -buildvcs=false -o {{.BIN_AGENT_PATH}} cmd/agent/main.go
+      - go build -ldflags "-X 'main.buildVersion=$(git symbolic-ref --short HEAD)' -X 'main.buildDate=$(date +'%Y/%m/%d')' -X 'main.buildCommit=$(git rev-parse HEAD)'" -buildvcs=false -o {{.BIN_AGENT_PATH}} cmd/agent/main.go
 
   build-server:
     cmds:
-      - go build -buildvcs=false -o {{.BIN_SERVER_PATH}} cmd/server/main.go
+      - go build -ldflags "-X 'main.buildVersion=$(git symbolic-ref --short HEAD)' -X 'main.buildDate=$(date +'%Y/%m/%d')' -X 'main.buildCommit=$(git rev-parse HEAD)'" -buildvcs=false -o {{.BIN_SERVER_PATH}} cmd/server/main.go
 
   build-staticlint:
     cmds:
