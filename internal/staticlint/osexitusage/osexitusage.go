@@ -9,6 +9,7 @@ import (
 )
 
 const (
+	mainPackageName  = "main"
 	mainFunctionName = "main"
 	osPackageName    = "os"
 	exitFunctionName = "Exit"
@@ -23,7 +24,7 @@ var Analyzer = &analysis.Analyzer{
 
 func run(pass *analysis.Pass) (interface{}, error) {
 	for _, file := range pass.Files {
-		if file.Name.Name != "main" {
+		if file.Name.Name != mainPackageName {
 			continue
 		}
 

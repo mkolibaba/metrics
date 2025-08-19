@@ -3,12 +3,16 @@ package inmemory
 import (
 	"context"
 	"github.com/mkolibaba/metrics/internal/server/storage"
+	"sync"
 )
 
 // MemStorage реализует интерфейс storage.Storage и хранит метрики в памяти.
 type MemStorage struct {
 	gauges   map[string]float64
 	counters map[string]int64
+
+	counterMu sync.Mutex
+	gaugeMu   sync.Mutex
 }
 
 // GetGauges возвращает все gauge-метрики из памяти.
@@ -41,12 +45,16 @@ func (m *MemStorage) GetCounter(ctx context.Context, name string) (int64, error)
 
 // UpdateGauge обновляет значение gauge-метрики.
 func (m *MemStorage) UpdateGauge(ctx context.Context, name string, value float64) (float64, error) {
+	m.gaugeMu.Lock()
+	defer m.gaugeMu.Unlock()
 	m.gauges[name] = value
 	return m.gauges[name], nil
 }
 
 // UpdateCounter обновляет значение counter-метрики.
 func (m *MemStorage) UpdateCounter(ctx context.Context, name string, value int64) (int64, error) {
+	m.counterMu.Lock()
+	defer m.counterMu.Unlock()
 	m.counters[name] += value
 	return m.counters[name], nil
 }
