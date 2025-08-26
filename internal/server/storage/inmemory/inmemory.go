@@ -11,22 +11,35 @@ type MemStorage struct {
 	gauges   map[string]float64
 	counters map[string]int64
 
-	countersMu sync.Mutex
-	gaugesMu   sync.Mutex
+	mu sync.RWMutex
 }
 
 // GetGauges возвращает все gauge-метрики из памяти.
 func (m *MemStorage) GetGauges(ctx context.Context) (map[string]float64, error) {
-	return m.gauges, nil
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	result := make(map[string]float64, len(m.gauges))
+	for k, v := range m.gauges {
+		result[k] = v
+	}
+	return result, nil
 }
 
 // GetCounters возвращает все counter-метрики из памяти.
 func (m *MemStorage) GetCounters(ctx context.Context) (map[string]int64, error) {
-	return m.counters, nil
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	result := make(map[string]int64, len(m.counters))
+	for k, v := range m.counters {
+		result[k] = v
+	}
+	return result, nil
 }
 
 // GetGauge возвращает значение gauge-метрики по имени.
 func (m *MemStorage) GetGauge(ctx context.Context, name string) (float64, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	v, ok := m.gauges[name]
 	if !ok {
 		return 0, storage.ErrMetricNotFound
@@ -36,6 +49,8 @@ func (m *MemStorage) GetGauge(ctx context.Context, name string) (float64, error)
 
 // GetCounter возвращает значение counter-метрики по имени.
 func (m *MemStorage) GetCounter(ctx context.Context, name string) (int64, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	v, ok := m.counters[name]
 	if !ok {
 		return 0, storage.ErrMetricNotFound
@@ -45,16 +60,16 @@ func (m *MemStorage) GetCounter(ctx context.Context, name string) (int64, error)
 
 // UpdateGauge обновляет значение gauge-метрики.
 func (m *MemStorage) UpdateGauge(ctx context.Context, name string, value float64) (float64, error) {
-	m.gaugesMu.Lock()
-	defer m.gaugesMu.Unlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.gauges[name] = value
 	return m.gauges[name], nil
 }
 
 // UpdateCounter обновляет значение counter-метрики.
 func (m *MemStorage) UpdateCounter(ctx context.Context, name string, value int64) (int64, error) {
-	m.countersMu.Lock()
-	defer m.countersMu.Unlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.counters[name] += value
 	return m.counters[name], nil
 }
