@@ -9,6 +9,8 @@ vars:
   BIN_STATICLINT_PATH: bin/staticlint
   BIN_STATICTEST_PATH: bin/statictest
   BIN_METRICSTEST_PATH: bin/metricstest
+  BUILD_INFO_PACKAGE: github.com/mkolibaba/metrics/internal/common/build
+  BUILD_LGFLAGS: -X '{{.BUILD_INFO_PACKAGE}}.buildVersion=$(git symbolic-ref --short HEAD)' -X '{{.BUILD_INFO_PACKAGE}}.buildDate=$(date +'%Y/%m/%d')' -X '{{.BUILD_INFO_PACKAGE}}.buildCommit=$(git rev-parse HEAD)'
 
 tasks:
   all-tests:
@@ -89,11 +91,11 @@ tasks:
 
   build-agent:
     cmds:
-      - go build -ldflags "-X 'main.buildVersion=$(git symbolic-ref --short HEAD)' -X 'main.buildDate=$(date +'%Y/%m/%d')' -X 'main.buildCommit=$(git rev-parse HEAD)'" -buildvcs=false -o {{.BIN_AGENT_PATH}} cmd/agent/main.go
+      - go build -ldflags "{{.BUILD_LGFLAGS}}" -buildvcs=false -o {{.BIN_AGENT_PATH}} cmd/agent/main.go
 
   build-server:
     cmds:
-      - go build -ldflags "-X 'main.buildVersion=$(git symbolic-ref --short HEAD)' -X 'main.buildDate=$(date +'%Y/%m/%d')' -X 'main.buildCommit=$(git rev-parse HEAD)'" -buildvcs=false -o {{.BIN_SERVER_PATH}} cmd/server/main.go
+      - go build -ldflags "{{.BUILD_LGFLAGS}}" -buildvcs=false -o {{.BIN_SERVER_PATH}} cmd/server/main.go
 
   build-staticlint:
     cmds:
