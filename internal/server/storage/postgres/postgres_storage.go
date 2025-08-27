@@ -30,9 +30,9 @@ func (p *PostgresStorage) GetGauges(ctx context.Context) (map[string]float64, er
 	for rows.Next() {
 		var id string
 		var value float64
-		err := rows.Scan(&id, &value)
-		if err != nil {
-			return nil, fmt.Errorf("error reading row: %w", err)
+		rErr := rows.Scan(&id, &value)
+		if rErr != nil {
+			return nil, fmt.Errorf("error reading row: %w", rErr)
 		}
 		gauges[id] = value
 	}
@@ -61,9 +61,9 @@ func (p *PostgresStorage) GetCounters(ctx context.Context) (map[string]int64, er
 	for rows.Next() {
 		var id string
 		var delta int64
-		err := rows.Scan(&id, &delta)
-		if err != nil {
-			return nil, fmt.Errorf("error reading row: %w", err)
+		rErr := rows.Scan(&id, &delta)
+		if rErr != nil {
+			return nil, fmt.Errorf("error reading row: %w", rErr)
 		}
 		res[id] = delta
 	}

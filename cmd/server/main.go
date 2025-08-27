@@ -1,7 +1,12 @@
 package main
 
-import "github.com/mkolibaba/metrics/internal/server/app"
+import (
+	"fmt"
+	"github.com/mkolibaba/metrics/internal/common/build"
+	"github.com/mkolibaba/metrics/internal/server/app"
+)
 
 func main() {
+	fmt.Print(build.GetBuildInfoMessage())
 	app.Run()
 }
