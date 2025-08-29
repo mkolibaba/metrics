@@ -6,6 +6,7 @@ import (
 	"fmt"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/mkolibaba/metrics/internal/common/log"
+	"github.com/mkolibaba/metrics/internal/common/rsa"
 	"github.com/mkolibaba/metrics/internal/server/config"
 	"github.com/mkolibaba/metrics/internal/server/http/router"
 	"github.com/mkolibaba/metrics/internal/server/storage/inmemory"
@@ -45,7 +46,15 @@ func Run() {
 	}
 	defer closeFn()
 
-	r := router.New(store, db, cfg.Key, logger)
+	decryptor := rsa.NopDecryptor
+	if cfg.CryptoKey != "" {
+		decryptor, err = rsa.NewDecryptor(cfg.CryptoKey)
+		if err != nil {
+			logger.Fatalf("error creating decryptor: %v", err)
+		}
+	}
+
+	r := router.New(store, db, cfg.Key, logger, decryptor)
 
 	logger.Infof("running server on %s", cfg.ServerAddress)
 	if err := http.ListenAndServe(cfg.ServerAddress, r); err != nil {

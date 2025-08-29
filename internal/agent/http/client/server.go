@@ -9,6 +9,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"github.com/mkolibaba/metrics/internal/common/rsa"
 
 	"github.com/go-resty/resty/v2"
 	"github.com/mkolibaba/metrics/internal/common/http/model"
@@ -19,21 +20,24 @@ import (
 // ServerClient включает в себя HTTP‑клиент и параметры запросов
 // для взаимодействия с сервером метрик.
 type ServerClient struct {
-	client  *resty.Client
-	hashKey string
-	logger  *zap.SugaredLogger
+	client    *resty.Client
+	hashKey   string
+	encryptor rsa.Encryptor
+	logger    *zap.SugaredLogger
 }
 
 // New создаёт новый клиент для отправки метрик на указанный адрес сервера.
-// serverAddress - адрес сервера, hashKey — ключ хедера HashSHA256, logger — логгер.
-func New(serverAddress, hashKey string, logger *zap.SugaredLogger) *ServerClient {
+// serverAddress - адрес сервера, hashKey — ключ хедера HashSHA256,
+// encryptor - шифровальщик тела запроса, logger — логгер.
+func New(serverAddress, hashKey string, encryptor rsa.Encryptor, logger *zap.SugaredLogger) *ServerClient {
 	client := resty.New().
 		SetBaseURL("http://" + serverAddress).
 		SetLogger(logger)
 	return &ServerClient{
-		client:  client,
-		hashKey: hashKey,
-		logger:  logger,
+		client:    client,
+		hashKey:   hashKey,
+		encryptor: encryptor,
+		logger:    logger,
 	}
 }
 
@@ -70,6 +74,12 @@ func (s *ServerClient) sendMetric(body []model.Metrics) error {
 		return err
 	}
 	gw.Close()
+
+	encrypted, err := s.encryptor.Encrypt(requestBody.Bytes())
+	if err != nil {
+		return err
+	}
+	requestBody = *bytes.NewBuffer(encrypted)
 
 	request := s.client.R().
 		SetHeader("Content-Type", "application/json").

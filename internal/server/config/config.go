@@ -20,7 +20,9 @@ type ServerConfig struct {
 	Restore         bool   `env:"RESTORE"`
 	DatabaseDSN     string `env:"DATABASE_DSN"`
 	Key             string `env:"KEY"`
+	CryptoKey       string `env:"CRYPTO_KEY"`
 }
+
 type configAlias struct {
 	ServerConfig
 	StoreInterval int `env:"STORE_INTERVAL"`
@@ -37,6 +39,7 @@ func LoadServerConfig() (*ServerConfig, error) {
 	flag.BoolVar(&cfg.Restore, "r", restoreDefault, "restore")
 	flag.StringVar(&cfg.DatabaseDSN, "d", "", "server address")
 	flag.StringVar(&cfg.Key, "k", "", "hash key")
+	flag.StringVar(&cfg.CryptoKey, "crypto-key", "", "crypto key file path")
 	flag.Parse()
 
 	if err := env.Parse(&cfg); err != nil {
