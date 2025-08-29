@@ -19,6 +19,7 @@ type AgentConfig struct {
 	PollInterval   time.Duration
 	Key            string `env:"KEY"`
 	RateLimit      int    `env:"RATE_LIMIT"`
+	CryptoKey      string `env:"CRYPTO_KEY"`
 }
 
 type configAlias struct {
@@ -37,6 +38,7 @@ func LoadAgentConfig() (*AgentConfig, error) {
 	flag.IntVar(&cfg.PollInterval, "p", pollIntervalSecondsDefault, "poll interval (seconds)")
 	flag.StringVar(&cfg.Key, "k", "", "hash key")
 	flag.IntVar(&cfg.RateLimit, "l", rateLimitDefault, "rate limit")
+	flag.StringVar(&cfg.CryptoKey, "crypto-key", "", "crypto key file path")
 	flag.Parse()
 
 	if err := env.Parse(&cfg); err != nil {

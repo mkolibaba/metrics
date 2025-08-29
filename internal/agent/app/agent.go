@@ -7,6 +7,7 @@ import (
 	"github.com/mkolibaba/metrics/internal/agent/http/client"
 	"github.com/mkolibaba/metrics/internal/agent/sender"
 	"github.com/mkolibaba/metrics/internal/common/log"
+	"github.com/mkolibaba/metrics/internal/common/rsa"
 	stdlog "log"
 )
 
@@ -27,7 +28,15 @@ func Run() {
 	c := collector.NewMetricsCollector(cfg.PollInterval, logger)
 	chGauges, chCounters := c.StartCollect(ctx)
 
-	serverAPI := client.New(cfg.ServerAddress, cfg.Key, logger)
+	encryptor := rsa.NopEncryptor
+	if cfg.CryptoKey != "" {
+		encryptor, err = rsa.NewEncryptor(cfg.CryptoKey)
+		if err != nil {
+			logger.Fatalf("error creating rsa encryptor: %v", err)
+		}
+	}
+
+	serverAPI := client.New(cfg.ServerAddress, cfg.Key, encryptor, logger)
 	metricsSender := sender.NewMetricsSender(serverAPI, cfg.ReportInterval, cfg.RateLimit, logger)
 
 	logger.Info("running agent")
