@@ -99,7 +99,7 @@ func readFromConfigFile(cfg *rawConfig) error {
 func parseFlags(cfg *rawConfig) {
 	flag.StringVar(&cfg.ServerAddress, "a", cfg.ServerAddress, "server address")
 	flag.IntVar(&cfg.StoreInterval, "i", cfg.StoreInterval, "store interval")
-	flag.StringVar(&cfg.FileStoragePath, cfg.FileStoragePath, "db.json", "file storage path")
+	flag.StringVar(&cfg.FileStoragePath, "f", cfg.FileStoragePath, "file storage path")
 	flag.BoolVar(&cfg.Restore, "r", cfg.Restore, "restore")
 	flag.StringVar(&cfg.DatabaseDSN, "d", cfg.DatabaseDSN, "server address")
 	flag.StringVar(&cfg.Key, "k", cfg.Key, "hash key")
