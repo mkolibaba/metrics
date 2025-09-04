@@ -17,18 +17,18 @@ const (
 )
 
 type ServerConfig struct {
-	ServerAddress   string `env:"ADDRESS"`
+	ServerAddress   string `env:"ADDRESS" json:"address"`
 	StoreInterval   time.Duration
-	FileStoragePath string `env:"FILE_STORAGE_PATH"`
-	Restore         bool   `env:"RESTORE"`
-	DatabaseDSN     string `env:"DATABASE_DSN"`
-	Key             string `env:"KEY"`
-	CryptoKey       string `env:"CRYPTO_KEY"`
+	FileStoragePath string `env:"FILE_STORAGE_PATH" json:"store_file"`
+	Restore         bool   `env:"RESTORE" json:"restore"`
+	DatabaseDSN     string `env:"DATABASE_DSN" json:"database_dsn"`
+	Key             string `env:"KEY" json:"key"`
+	CryptoKey       string `env:"CRYPTO_KEY" json:"crypto_key"`
 }
 
 type rawConfig struct {
 	ServerConfig
-	StoreInterval int `env:"STORE_INTERVAL"`
+	StoreInterval int `env:"STORE_INTERVAL" json:"store_interval"`
 }
 
 // LoadServerConfig загружает конфигурацию сервера. Значения имеют следующий приоритет:
@@ -103,7 +103,7 @@ func parseFlags(cfg *rawConfig) {
 	flag.BoolVar(&cfg.Restore, "r", cfg.Restore, "restore")
 	flag.StringVar(&cfg.DatabaseDSN, "d", cfg.DatabaseDSN, "server address")
 	flag.StringVar(&cfg.Key, "k", cfg.Key, "hash key")
-	flag.StringVar(&cfg.CryptoKey, "crypto-key", cfg.Key, "crypto key file path")
+	flag.StringVar(&cfg.CryptoKey, "crypto-key", cfg.CryptoKey, "crypto key file path")
 	_ = flag.String("c", "", "config file path")
 	_ = flag.String("config", "", "config file path")
 	flag.Parse()
