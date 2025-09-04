@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/go-chi/chi/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/mkolibaba/metrics/internal/common/log"
 	"github.com/mkolibaba/metrics/internal/common/rsa"
@@ -16,6 +17,9 @@ import (
 	"go.uber.org/zap"
 	stdlog "log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 var noopFn = func() {}
@@ -25,7 +29,8 @@ var noopFn = func() {}
 // и HTTP-роутер, а затем запускает сервер.
 // Работает до прерывания.
 func Run() {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	cfg, err := config.LoadServerConfig()
 	if err != nil {
@@ -56,10 +61,37 @@ func Run() {
 
 	r := router.New(store, db, cfg.Key, logger, decryptor)
 
+	runServer(ctx, cfg, r, logger)
+}
+
+func runServer(
+	ctx context.Context,
+	cfg *config.ServerConfig,
+	r chi.Router,
+	logger *zap.SugaredLogger,
+) {
 	logger.Infof("running server on %s", cfg.ServerAddress)
-	if err := http.ListenAndServe(cfg.ServerAddress, r); err != nil {
+
+	server := http.Server{Addr: cfg.ServerAddress, Handler: r}
+
+	shutdown := make(chan struct{})
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+
+	go func() {
+		<-interrupt
+		if err := server.Shutdown(ctx); err != nil {
+			logger.Fatalf("error shutting down server: %v", err)
+		}
+		close(shutdown)
+	}()
+
+	if err := server.ListenAndServe(); err != http.ErrServerClosed {
 		logger.Fatal(err)
 	}
+	<-shutdown
+
+	logger.Info("server stopped")
 }
 
 func createDB(databaseDSN string) (*sql.DB, error) {

@@ -8,7 +8,11 @@ import (
 	"github.com/mkolibaba/metrics/internal/agent/sender"
 	"github.com/mkolibaba/metrics/internal/common/log"
 	"github.com/mkolibaba/metrics/internal/common/rsa"
+	"go.uber.org/zap"
 	stdlog "log"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 // Run инициализирует и запускает агент сбора метрик.
@@ -16,7 +20,8 @@ import (
 // а затем запускает основной цикл отправки метрик.
 // Работает до прерывания.
 func Run() {
-	ctx := context.Background()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	cfg, err := config.LoadAgentConfig()
 	if err != nil {
@@ -39,7 +44,26 @@ func Run() {
 	serverAPI := client.New(cfg.ServerAddress, cfg.Key, encryptor, logger)
 	metricsSender := sender.NewMetricsSender(serverAPI, cfg.ReportInterval, cfg.RateLimit, logger)
 
+	runAgent(ctx, metricsSender, chGauges, chCounters, logger)
+}
+
+func runAgent(
+	ctx context.Context,
+	metricsSender *sender.MetricsSender,
+	chGauges <-chan map[string]float64,
+	chCounters <-chan map[string]int64,
+	logger *zap.SugaredLogger,
+) {
 	logger.Info("running agent")
 
-	metricsSender.StartSend(ctx, chGauges, chCounters)
+	interrupt := make(chan os.Signal, 1)
+	signal.Notify(interrupt, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+
+	go func() {
+		metricsSender.StartSend(ctx, chGauges, chCounters)
+	}()
+
+	<-interrupt
+
+	logger.Info("agent stopped")
 }
