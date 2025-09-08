@@ -15,6 +15,7 @@ import (
 	"github.com/mkolibaba/metrics/internal/server/storage/postgres"
 	"github.com/mkolibaba/metrics/migrations"
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 	stdlog "log"
 	"net/http"
 	"os/signal"
@@ -77,13 +78,16 @@ func runServer(
 
 	shutdown := make(chan struct{})
 
-	go func() {
+	g, ctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
 		<-ctx.Done()
-		if err := server.Shutdown(ctx); err != nil {
-			logger.Fatalf("error shutting down server: %v", err)
+		if err := server.Shutdown(context.Background()); err != nil {
+			return fmt.Errorf("error shutting down server: %w", err)
 		}
 		close(shutdown)
-	}()
+		return nil
+	})
 
 	if err := server.ListenAndServe(); err != http.ErrServerClosed {
 		return err
@@ -92,7 +96,7 @@ func runServer(
 
 	logger.Info("server stopped")
 
-	return nil
+	return g.Wait()
 }
 
 func createDB(databaseDSN string) (*sql.DB, error) {
