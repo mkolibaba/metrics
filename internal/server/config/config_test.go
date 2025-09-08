@@ -1,6 +1,7 @@
 package config
 
 import (
+	"flag"
 	"fmt"
 	"github.com/mkolibaba/metrics/internal/server/testutils"
 	"os"
@@ -10,6 +11,8 @@ import (
 )
 
 func TestLoadServerConfig(t *testing.T) {
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+
 	t.Setenv("ADDRESS", "123")
 	t.Setenv("STORE_INTERVAL", "2")
 	t.Setenv("FILE_STORAGE_PATH", "/a/b/c/file.txt")
@@ -37,6 +40,8 @@ var configFileContent = `{
 }`
 
 func TestConfigFile(t *testing.T) {
+	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ContinueOnError)
+
 	// создаем временный файл конфигурации
 	tmpFile, err := os.CreateTemp("", "test-config-*.json")
 	testutils.AssertNoError(t, err)

@@ -73,7 +73,6 @@ func (m *MetricsSender) StartSend(
 				go worker(aggregated)
 			}
 		case <-ctx.Done():
-			m.logger.Debug("stopping sending")
 			return
 		}
 	}
