@@ -76,8 +76,6 @@ func runServer(
 
 	server := http.Server{Addr: cfg.ServerAddress, Handler: r}
 
-	shutdown := make(chan struct{})
-
 	g, ctx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
@@ -85,14 +83,12 @@ func runServer(
 		if err := server.Shutdown(context.Background()); err != nil {
 			return fmt.Errorf("error shutting down server: %w", err)
 		}
-		close(shutdown)
 		return nil
 	})
 
 	if err := server.ListenAndServe(); err != http.ErrServerClosed {
 		return err
 	}
-	<-shutdown
 
 	logger.Info("server stopped")
 
