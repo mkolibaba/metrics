@@ -63,28 +63,7 @@ func createDefaultConfig() rawConfig {
 }
 
 func readFromConfigFile(cfg *rawConfig) error {
-	fn := func() string {
-		if configFilePath, ok := os.LookupEnv("CONFIG"); ok {
-			return configFilePath
-		}
-
-		args := os.Args[1:]
-		for i, arg := range args {
-			if arg == "-c" || arg == "-config" {
-				return args[i+1]
-			}
-			if strings.HasPrefix(arg, "-c=") {
-				return strings.TrimPrefix(arg, "-c=")
-			}
-			if strings.HasPrefix(arg, "-config=") {
-				return strings.TrimPrefix(arg, "-config=")
-			}
-		}
-
-		return ""
-	}
-
-	path := fn()
+	path := getConfigFilePath()
 	if path == "" {
 		return nil
 	}
@@ -95,6 +74,27 @@ func readFromConfigFile(cfg *rawConfig) error {
 	}
 
 	return json.Unmarshal(content, cfg)
+}
+
+func getConfigFilePath() string {
+	if configFilePath, ok := os.LookupEnv("CONFIG"); ok {
+		return configFilePath
+	}
+
+	args := os.Args[1:]
+	for i, arg := range args {
+		if arg == "-c" || arg == "-config" {
+			return args[i+1]
+		}
+		if strings.HasPrefix(arg, "-c=") {
+			return strings.TrimPrefix(arg, "-c=")
+		}
+		if strings.HasPrefix(arg, "-config=") {
+			return strings.TrimPrefix(arg, "-config=")
+		}
+	}
+
+	return ""
 }
 
 func parseFlags(cfg *rawConfig) {

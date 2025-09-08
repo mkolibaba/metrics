@@ -17,7 +17,6 @@ import (
 	"go.uber.org/zap"
 	stdlog "log"
 	"net/http"
-	"os"
 	"os/signal"
 	"syscall"
 )
@@ -29,8 +28,8 @@ var noopFn = func() {}
 // и HTTP-роутер, а затем запускает сервер.
 // Работает до прерывания.
 func Run() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+	defer stop()
 
 	cfg, err := config.LoadServerConfig()
 	if err != nil {
@@ -61,7 +60,9 @@ func Run() {
 
 	r := router.New(store, db, cfg.Key, logger, decryptor)
 
-	runServer(ctx, cfg, r, logger)
+	if err := runServer(ctx, cfg, r, logger); err != nil {
+		logger.Fatalf("error running server: %v", err)
+	}
 }
 
 func runServer(
@@ -69,17 +70,15 @@ func runServer(
 	cfg *config.ServerConfig,
 	r chi.Router,
 	logger *zap.SugaredLogger,
-) {
+) error {
 	logger.Infof("running server on %s", cfg.ServerAddress)
 
 	server := http.Server{Addr: cfg.ServerAddress, Handler: r}
 
 	shutdown := make(chan struct{})
-	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
 
 	go func() {
-		<-interrupt
+		<-ctx.Done()
 		if err := server.Shutdown(ctx); err != nil {
 			logger.Fatalf("error shutting down server: %v", err)
 		}
@@ -87,11 +86,13 @@ func runServer(
 	}()
 
 	if err := server.ListenAndServe(); err != http.ErrServerClosed {
-		logger.Fatal(err)
+		return err
 	}
 	<-shutdown
 
 	logger.Info("server stopped")
+
+	return nil
 }
 
 func createDB(databaseDSN string) (*sql.DB, error) {

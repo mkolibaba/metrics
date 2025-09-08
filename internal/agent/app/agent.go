@@ -10,7 +10,6 @@ import (
 	"github.com/mkolibaba/metrics/internal/common/rsa"
 	"go.uber.org/zap"
 	stdlog "log"
-	"os"
 	"os/signal"
 	"syscall"
 )
@@ -20,8 +19,8 @@ import (
 // а затем запускает основной цикл отправки метрик.
 // Работает до прерывания.
 func Run() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+	defer stop()
 
 	cfg, err := config.LoadAgentConfig()
 	if err != nil {
@@ -56,14 +55,11 @@ func runAgent(
 ) {
 	logger.Info("running agent")
 
-	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
-
 	go func() {
 		metricsSender.StartSend(ctx, chGauges, chCounters)
 	}()
 
-	<-interrupt
+	<-ctx.Done()
 
 	logger.Info("agent stopped")
 }
