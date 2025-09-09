@@ -4,8 +4,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"github.com/go-chi/chi/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/mkolibaba/metrics/internal/common/log"
+	"github.com/mkolibaba/metrics/internal/common/rsa"
 	"github.com/mkolibaba/metrics/internal/server/config"
 	"github.com/mkolibaba/metrics/internal/server/http/router"
 	"github.com/mkolibaba/metrics/internal/server/storage/inmemory"
@@ -13,8 +15,11 @@ import (
 	"github.com/mkolibaba/metrics/internal/server/storage/postgres"
 	"github.com/mkolibaba/metrics/migrations"
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 	stdlog "log"
 	"net/http"
+	"os/signal"
+	"syscall"
 )
 
 var noopFn = func() {}
@@ -24,7 +29,8 @@ var noopFn = func() {}
 // и HTTP-роутер, а затем запускает сервер.
 // Работает до прерывания.
 func Run() {
-	ctx := context.Background()
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+	defer stop()
 
 	cfg, err := config.LoadServerConfig()
 	if err != nil {
@@ -45,12 +51,48 @@ func Run() {
 	}
 	defer closeFn()
 
-	r := router.New(store, db, cfg.Key, logger)
-
-	logger.Infof("running server on %s", cfg.ServerAddress)
-	if err := http.ListenAndServe(cfg.ServerAddress, r); err != nil {
-		logger.Fatal(err)
+	decryptor := rsa.NopDecryptor
+	if cfg.CryptoKey != "" {
+		decryptor, err = rsa.NewDecryptor(cfg.CryptoKey)
+		if err != nil {
+			logger.Fatalf("error creating decryptor: %v", err)
+		}
 	}
+
+	r := router.New(store, db, cfg.Key, logger, decryptor)
+
+	if err := runServer(ctx, cfg, r, logger); err != nil {
+		logger.Fatalf("error running server: %v", err)
+	}
+}
+
+func runServer(
+	ctx context.Context,
+	cfg *config.ServerConfig,
+	r chi.Router,
+	logger *zap.SugaredLogger,
+) error {
+	logger.Infof("running server on %s", cfg.ServerAddress)
+
+	server := http.Server{Addr: cfg.ServerAddress, Handler: r}
+
+	g, ctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		<-ctx.Done()
+		if err := server.Shutdown(context.Background()); err != nil {
+			return fmt.Errorf("error shutting down server: %w", err)
+		}
+		return nil
+	})
+
+	if err := server.ListenAndServe(); err != http.ErrServerClosed {
+		return err
+	}
+
+	logger.Info("server stopped")
+
+	return g.Wait()
 }
 
 func createDB(databaseDSN string) (*sql.DB, error) {

@@ -3,6 +3,7 @@ package router
 import (
 	"database/sql"
 	"github.com/go-chi/chi/v5"
+	"github.com/mkolibaba/metrics/internal/common/rsa"
 	"github.com/mkolibaba/metrics/internal/server/http/handlers/list"
 	"github.com/mkolibaba/metrics/internal/server/http/handlers/ping"
 	"github.com/mkolibaba/metrics/internal/server/http/handlers/read"
@@ -19,13 +20,19 @@ type MetricsStorage interface {
 
 // New создает и настраивает новый chi.Router.
 // Роутер включает в себя middleware для логирования, подписи, сжатия
-// и проверки Content-Type, а также регистрирует обработчики
-// для всех эндпоинтов сервера метрик.
-func New(store MetricsStorage, db *sql.DB, hashKey string, logger *zap.SugaredLogger) chi.Router {
+// и шифровки, а также регистрирует обработчики для всех эндпоинтов сервера метрик.
+func New(
+	store MetricsStorage,
+	db *sql.DB,
+	hashKey string,
+	logger *zap.SugaredLogger,
+	decryptor rsa.Decryptor,
+) chi.Router {
 	r := chi.NewRouter()
 
 	// middleware
 	r.Use(middleware.Logger(logger))
+	r.Use(middleware.Decryptor(decryptor, logger))
 	if hashKey != "" {
 		r.Use(middleware.Hash(hashKey, logger))
 	}

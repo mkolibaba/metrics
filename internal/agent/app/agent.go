@@ -7,7 +7,11 @@ import (
 	"github.com/mkolibaba/metrics/internal/agent/http/client"
 	"github.com/mkolibaba/metrics/internal/agent/sender"
 	"github.com/mkolibaba/metrics/internal/common/log"
+	"github.com/mkolibaba/metrics/internal/common/rsa"
+	"go.uber.org/zap"
 	stdlog "log"
+	"os/signal"
+	"syscall"
 )
 
 // Run инициализирует и запускает агент сбора метрик.
@@ -15,7 +19,8 @@ import (
 // а затем запускает основной цикл отправки метрик.
 // Работает до прерывания.
 func Run() {
-	ctx := context.Background()
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
+	defer stop()
 
 	cfg, err := config.LoadAgentConfig()
 	if err != nil {
@@ -27,10 +32,34 @@ func Run() {
 	c := collector.NewMetricsCollector(cfg.PollInterval, logger)
 	chGauges, chCounters := c.StartCollect(ctx)
 
-	serverAPI := client.New(cfg.ServerAddress, cfg.Key, logger)
+	encryptor := rsa.NopEncryptor
+	if cfg.CryptoKey != "" {
+		encryptor, err = rsa.NewEncryptor(cfg.CryptoKey)
+		if err != nil {
+			logger.Fatalf("error creating rsa encryptor: %v", err)
+		}
+	}
+
+	serverAPI := client.New(cfg.ServerAddress, cfg.Key, encryptor, logger)
 	metricsSender := sender.NewMetricsSender(serverAPI, cfg.ReportInterval, cfg.RateLimit, logger)
 
+	runAgent(ctx, metricsSender, chGauges, chCounters, logger)
+}
+
+func runAgent(
+	ctx context.Context,
+	metricsSender *sender.MetricsSender,
+	chGauges <-chan map[string]float64,
+	chCounters <-chan map[string]int64,
+	logger *zap.SugaredLogger,
+) {
 	logger.Info("running agent")
 
-	metricsSender.StartSend(ctx, chGauges, chCounters)
+	go func() {
+		metricsSender.StartSend(ctx, chGauges, chCounters)
+	}()
+
+	<-ctx.Done()
+
+	logger.Info("agent stopped")
 }
