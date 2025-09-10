@@ -20,7 +20,7 @@ func ExampleNew() {
 	store := inmemory.NewMemStorage()
 
 	// Создание роутера и запуск тестового сервера.
-	testRouter := router.New(store, nil, "", logger, rsa.NopDecryptor)
+	testRouter := router.New(store, nil, "", nil, logger, rsa.NopDecryptor)
 	server := httptest.NewServer(testRouter)
 	defer server.Close()
 
@@ -63,7 +63,7 @@ func ExampleNew() {
 func ExampleNew_updateJSONBatch() {
 	logger := zap.NewNop().Sugar()
 	store := inmemory.NewMemStorage()
-	testRouter := router.New(store, nil, "", logger, rsa.NopDecryptor)
+	testRouter := router.New(store, nil, "", nil, logger, rsa.NopDecryptor)
 	server := httptest.NewServer(testRouter)
 	defer server.Close()
 

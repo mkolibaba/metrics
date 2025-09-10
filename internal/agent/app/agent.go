@@ -40,7 +40,10 @@ func Run() {
 		}
 	}
 
-	serverAPI := client.New(cfg.ServerAddress, cfg.Key, encryptor, logger)
+	serverAPI, err := client.New(cfg.ServerAddress, cfg.Key, encryptor, logger)
+	if err != nil {
+		logger.Fatalf("error creating server client: %v", err)
+	}
 	metricsSender := sender.NewMetricsSender(serverAPI, cfg.ReportInterval, cfg.RateLimit, logger)
 
 	runAgent(ctx, metricsSender, chGauges, chCounters, logger)
