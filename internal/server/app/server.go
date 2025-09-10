@@ -59,7 +59,7 @@ func Run() {
 		}
 	}
 
-	r := router.New(store, db, cfg.Key, logger, decryptor)
+	r := router.New(store, db, cfg.Key, cfg.TrustedSubnet, logger, decryptor)
 
 	if err := runServer(ctx, cfg, r, logger); err != nil {
 		logger.Fatalf("error running server: %v", err)

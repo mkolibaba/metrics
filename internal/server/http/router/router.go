@@ -10,6 +10,7 @@ import (
 	"github.com/mkolibaba/metrics/internal/server/http/handlers/update"
 	"github.com/mkolibaba/metrics/internal/server/http/middleware"
 	"go.uber.org/zap"
+	"net"
 )
 
 type MetricsStorage interface {
@@ -25,6 +26,7 @@ func New(
 	store MetricsStorage,
 	db *sql.DB,
 	hashKey string,
+	subnet *net.IPNet,
 	logger *zap.SugaredLogger,
 	decryptor rsa.Decryptor,
 ) chi.Router {
@@ -32,6 +34,9 @@ func New(
 
 	// middleware
 	r.Use(middleware.Logger(logger))
+	if subnet != nil {
+		r.Use(middleware.Subnet(subnet))
+	}
 	r.Use(middleware.Decryptor(decryptor, logger))
 	if hashKey != "" {
 		r.Use(middleware.Hash(hashKey, logger))
