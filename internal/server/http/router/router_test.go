@@ -3,7 +3,7 @@ package router_test
 import (
 	"context"
 	"fmt"
-	"github.com/mkolibaba/metrics/internal/common/rsa"
+	"github.com/mkolibaba/metrics/internal/server/config"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -16,11 +16,12 @@ import (
 
 // ExampleNew демонстрирует создание, запуск и использование сервера метрик.
 func ExampleNew() {
+	cfg := &config.ServerConfig{}
 	logger := zap.NewNop().Sugar()
 	store := inmemory.NewMemStorage()
 
 	// Создание роутера и запуск тестового сервера.
-	testRouter := router.New(store, nil, "", nil, logger, rsa.NopDecryptor)
+	testRouter, _ := router.New(store, nil, cfg, logger)
 	server := httptest.NewServer(testRouter)
 	defer server.Close()
 
@@ -61,9 +62,10 @@ func ExampleNew() {
 
 // ExampleNew_updateJSONBatch демонстрирует батчевое обновление метрик.
 func ExampleNew_updateJSONBatch() {
+	cfg := &config.ServerConfig{}
 	logger := zap.NewNop().Sugar()
 	store := inmemory.NewMemStorage()
-	testRouter := router.New(store, nil, "", nil, logger, rsa.NopDecryptor)
+	testRouter, _ := router.New(store, nil, cfg, logger)
 	server := httptest.NewServer(testRouter)
 	defer server.Close()
 

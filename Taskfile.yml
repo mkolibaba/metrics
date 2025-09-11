@@ -101,6 +101,10 @@ tasks:
     cmds:
       - go build -buildvcs=false -o {{.BIN_STATICLINT_PATH}} cmd/staticlint/main.go
 
+  gen-proto:
+    cmds:
+      - (cd internal/common/grpc/proto;protoc --go_out=gen --go_opt=paths=source_relative --go-grpc_out=gen --go-grpc_opt=paths=source_relative *.proto)
+
   iter1:
     internal: true
     cmds:

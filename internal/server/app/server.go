@@ -4,23 +4,25 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/go-chi/chi/v5"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/mkolibaba/metrics/internal/common/log"
-	"github.com/mkolibaba/metrics/internal/common/rsa"
 	"github.com/mkolibaba/metrics/internal/server/config"
+	"github.com/mkolibaba/metrics/internal/server/grpc"
+	"github.com/mkolibaba/metrics/internal/server/http"
 	"github.com/mkolibaba/metrics/internal/server/http/router"
 	"github.com/mkolibaba/metrics/internal/server/storage/inmemory"
 	"github.com/mkolibaba/metrics/internal/server/storage/jsonfile"
 	"github.com/mkolibaba/metrics/internal/server/storage/postgres"
 	"github.com/mkolibaba/metrics/migrations"
 	"go.uber.org/zap"
-	"golang.org/x/sync/errgroup"
 	stdlog "log"
-	"net/http"
 	"os/signal"
 	"syscall"
 )
+
+type Server interface {
+	Start(ctx context.Context, addr string) error
+}
 
 var noopFn = func() {}
 
@@ -29,70 +31,47 @@ var noopFn = func() {}
 // и HTTP-роутер, а затем запускает сервер.
 // Работает до прерывания.
 func Run() {
+	// context
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
 	defer stop()
 
+	// config
 	cfg, err := config.LoadServerConfig()
 	if err != nil {
 		stdlog.Fatalf("error creating config: %v", err)
 	}
 
+	// logger
 	logger := log.New()
 
+	// database
 	db, err := createDB(cfg.DatabaseDSN)
 	if err != nil {
 		logger.Fatalf("error creating db: %v", err)
 	}
 	defer db.Close()
 
+	// storage
 	store, closeFn, err := createStore(ctx, cfg, db, logger)
 	if err != nil {
 		logger.Fatalf("error creating store: %v", err)
 	}
 	defer closeFn()
 
-	decryptor := rsa.NopDecryptor
-	if cfg.CryptoKey != "" {
-		decryptor, err = rsa.NewDecryptor(cfg.CryptoKey)
+	// server
+	var server Server
+	if cfg.UseGRPC {
+		server = grpc.NewServer(store, logger)
+	} else {
+		server, err = http.NewServer(store, db, cfg, logger)
 		if err != nil {
-			logger.Fatalf("error creating decryptor: %v", err)
+			logger.Fatalf("error creating server: %v", err)
 		}
 	}
 
-	r := router.New(store, db, cfg.Key, cfg.TrustedSubnet, logger, decryptor)
-
-	if err := runServer(ctx, cfg, r, logger); err != nil {
-		logger.Fatalf("error running server: %v", err)
+	if err := server.Start(ctx, cfg.ServerAddress); err != nil {
+		logger.Fatalf("server error: %v", err)
 	}
-}
-
-func runServer(
-	ctx context.Context,
-	cfg *config.ServerConfig,
-	r chi.Router,
-	logger *zap.SugaredLogger,
-) error {
-	logger.Infof("running server on %s", cfg.ServerAddress)
-
-	server := http.Server{Addr: cfg.ServerAddress, Handler: r}
-
-	g, ctx := errgroup.WithContext(ctx)
-
-	g.Go(func() error {
-		<-ctx.Done()
-		if err := server.Shutdown(context.Background()); err != nil {
-			return fmt.Errorf("error shutting down server: %w", err)
-		}
-		return nil
-	})
-
-	if err := server.ListenAndServe(); err != http.ErrServerClosed {
-		return err
-	}
-
-	logger.Info("server stopped")
-
-	return g.Wait()
 }
 
 func createDB(databaseDSN string) (*sql.DB, error) {

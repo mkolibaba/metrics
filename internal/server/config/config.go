@@ -15,6 +15,7 @@ const (
 	storeIntervalSecondsDefault = 300
 	fileStoragePathDefault      = "db.json"
 	restoreDefault              = true
+	useGRPCDefault              = false
 )
 
 type ServerConfig struct {
@@ -26,6 +27,7 @@ type ServerConfig struct {
 	Key             string `env:"KEY" json:"key"`
 	CryptoKey       string `env:"CRYPTO_KEY" json:"crypto_key"`
 	TrustedSubnet   *net.IPNet
+	UseGRPC         bool `env:"USE_GRPC" json:"use_grpc"`
 }
 
 type rawConfig struct {
@@ -68,6 +70,7 @@ func createDefaultConfig() rawConfig {
 	cfg.StoreInterval = storeIntervalSecondsDefault
 	cfg.FileStoragePath = fileStoragePathDefault
 	cfg.Restore = restoreDefault
+	cfg.UseGRPC = useGRPCDefault
 	return cfg
 }
 
@@ -115,6 +118,7 @@ func parseFlags(cfg *rawConfig) {
 	flag.StringVar(&cfg.Key, "k", cfg.Key, "hash key")
 	flag.StringVar(&cfg.CryptoKey, "crypto-key", cfg.CryptoKey, "crypto key file path")
 	flag.StringVar(&cfg.TrustedSubnet, "t", cfg.TrustedSubnet, "trusted subnet")
+	flag.BoolVar(&cfg.UseGRPC, "g", cfg.UseGRPC, "use grpc instead of http")
 	_ = flag.String("c", "", "config file path")
 	_ = flag.String("config", "", "config file path")
 	flag.Parse()
