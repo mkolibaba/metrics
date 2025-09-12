@@ -4,7 +4,8 @@ import (
 	"context"
 	"github.com/mkolibaba/metrics/internal/agent/collector"
 	"github.com/mkolibaba/metrics/internal/agent/config"
-	"github.com/mkolibaba/metrics/internal/agent/http/client"
+	grpcclient "github.com/mkolibaba/metrics/internal/agent/grpc/client"
+	httpclient "github.com/mkolibaba/metrics/internal/agent/http/client"
 	"github.com/mkolibaba/metrics/internal/agent/sender"
 	"github.com/mkolibaba/metrics/internal/common/log"
 	"github.com/mkolibaba/metrics/internal/common/rsa"
@@ -19,19 +20,24 @@ import (
 // а затем запускает основной цикл отправки метрик.
 // Работает до прерывания.
 func Run() {
+	// context
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT, syscall.SIGQUIT)
 	defer stop()
 
+	// config
 	cfg, err := config.LoadAgentConfig()
 	if err != nil {
 		stdlog.Fatalf("error creating config: %v", err)
 	}
 
+	// logger
 	logger := log.New()
 
+	// collector
 	c := collector.NewMetricsCollector(cfg.PollInterval, logger)
 	chGauges, chCounters := c.StartCollect(ctx)
 
+	// encryptor
 	encryptor := rsa.NopEncryptor
 	if cfg.CryptoKey != "" {
 		encryptor, err = rsa.NewEncryptor(cfg.CryptoKey)
@@ -40,10 +46,21 @@ func Run() {
 		}
 	}
 
-	serverAPI, err := client.New(cfg.ServerAddress, cfg.Key, encryptor, logger)
-	if err != nil {
-		logger.Fatalf("error creating server client: %v", err)
+	// server API
+	var serverAPI sender.ServerAPI
+	if cfg.UseGRPC {
+		serverAPI, err = grpcclient.New(cfg.ServerAddress)
+		if err != nil {
+			logger.Fatalf("error creating grpc client: %v", err)
+		}
+	} else {
+		serverAPI, err = httpclient.New(cfg.ServerAddress, cfg.Key, encryptor, logger)
+		if err != nil {
+			logger.Fatalf("error creating http client: %v", err)
+		}
 	}
+
+	// sender
 	metricsSender := sender.NewMetricsSender(serverAPI, cfg.ReportInterval, cfg.RateLimit, logger)
 
 	runAgent(ctx, metricsSender, chGauges, chCounters, logger)

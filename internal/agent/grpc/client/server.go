@@ -4,6 +4,7 @@ import (
 	"context"
 	metrics "github.com/mkolibaba/metrics/internal/common/grpc/proto/gen"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 type ServerClient struct {
@@ -12,7 +13,7 @@ type ServerClient struct {
 }
 
 func New(serverAddress string) (*ServerClient, error) {
-	conn, err := grpc.NewClient(serverAddress)
+	conn, err := grpc.NewClient(serverAddress, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, err
 	}

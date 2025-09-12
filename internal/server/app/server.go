@@ -61,11 +61,11 @@ func Run() {
 	// server
 	var server Server
 	if cfg.UseGRPC {
-		server = grpc.NewServer(store, logger)
+		server = grpc.NewServer(store, cfg, logger)
 	} else {
 		server, err = http.NewServer(store, db, cfg, logger)
 		if err != nil {
-			logger.Fatalf("error creating server: %v", err)
+			logger.Fatalf("error creating http server: %v", err)
 		}
 	}
 

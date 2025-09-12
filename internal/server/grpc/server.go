@@ -5,11 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"github.com/golang/protobuf/ptypes/empty"
-	metrics "github.com/mkolibaba/metrics/internal/common/grpc/proto/gen"
+	pb "github.com/mkolibaba/metrics/internal/common/grpc/proto/gen"
+	"github.com/mkolibaba/metrics/internal/server/config"
+	"github.com/mkolibaba/metrics/internal/server/grpc/interceptors"
 	"github.com/mkolibaba/metrics/internal/server/storage"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 	"net"
 	"sync"
@@ -30,28 +33,28 @@ type MetricsStorage interface {
 }
 
 type serviceServer struct {
-	metrics.UnimplementedServiceServer
+	pb.UnimplementedServiceServer
 	store MetricsStorage
 }
 
-func (s *serviceServer) Get(ctx context.Context, in *metrics.GetRequest) (*metrics.Metrics, error) {
+func (s *serviceServer) Get(ctx context.Context, in *pb.GetRequest) (*pb.Metrics, error) {
 	switch in.MType {
-	case metrics.MType_COUNTER:
+	case pb.MType_COUNTER:
 		counter, err := s.store.GetCounter(ctx, in.Id)
 		if errors.Is(err, storage.ErrMetricNotFound) {
 			return nil, status.Error(codes.NotFound, "metric not found")
 		}
-		return &metrics.Metrics{
+		return &pb.Metrics{
 			Id:    in.Id,
 			MType: in.MType,
 			Delta: counter,
 		}, nil
-	case metrics.MType_GAUGE:
+	case pb.MType_GAUGE:
 		gauge, err := s.store.GetGauge(ctx, in.Id)
 		if errors.Is(err, storage.ErrMetricNotFound) {
 			return nil, status.Error(codes.NotFound, "metric not found")
 		}
-		return &metrics.Metrics{
+		return &pb.Metrics{
 			Id:    in.Id,
 			MType: in.MType,
 			Value: gauge,
@@ -61,7 +64,7 @@ func (s *serviceServer) Get(ctx context.Context, in *metrics.GetRequest) (*metri
 	}
 }
 
-func (s *serviceServer) GetAll(ctx context.Context, in *empty.Empty) (*metrics.GetAllResponse, error) {
+func (s *serviceServer) GetAll(ctx context.Context, in *empty.Empty) (*pb.GetAllResponse, error) {
 	gauges, err := s.store.GetGauges(ctx)
 	if err != nil {
 		return nil, status.Error(codes.Internal, err.Error())
@@ -71,45 +74,45 @@ func (s *serviceServer) GetAll(ctx context.Context, in *empty.Empty) (*metrics.G
 		return nil, status.Error(codes.Internal, err.Error())
 	}
 
-	result := make([]*metrics.Metrics, 0, len(gauges)+len(counters))
+	result := make([]*pb.Metrics, 0, len(gauges)+len(counters))
 	for k, v := range gauges {
-		result = append(result, &metrics.Metrics{
+		result = append(result, &pb.Metrics{
 			Id:    k,
 			MType: metrics.MType_GAUGE,
 			Value: v,
 		})
 	}
 	for k, v := range counters {
-		result = append(result, &metrics.Metrics{
+		result = append(result, &pb.Metrics{
 			Id:    k,
-			MType: metrics.MType_COUNTER,
+			MType: pb.MType_COUNTER,
 			Delta: v,
 		})
 	}
 
-	return &metrics.GetAllResponse{Result: result}, nil
+	return &pb.GetAllResponse{Result: result}, nil
 }
 
-func (s *serviceServer) Update(ctx context.Context, in *metrics.Metrics) (*metrics.Metrics, error) {
+func (s *serviceServer) Update(ctx context.Context, in *pb.Metrics) (*pb.Metrics, error) {
 	switch in.MType {
-	case metrics.MType_COUNTER:
+	case pb.MType_COUNTER:
 		counter, err := s.store.UpdateCounter(ctx, in.Id, in.Delta)
 		if err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
-		return &metrics.Metrics{
+		return &pb.Metrics{
 			Id:    in.Id,
-			MType: metrics.MType_COUNTER,
+			MType: pb.MType_COUNTER,
 			Delta: counter,
 		}, nil
-	case metrics.MType_GAUGE:
+	case pb.MType_GAUGE:
 		gauge, err := s.store.UpdateGauge(ctx, in.Id, in.Value)
 		if err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
-		return &metrics.Metrics{
+		return &pb.Metrics{
 			Id:    in.Id,
-			MType: metrics.MType_GAUGE,
+			MType: pb.MType_GAUGE,
 			Value: gauge,
 		}, nil
 	default:
@@ -117,15 +120,15 @@ func (s *serviceServer) Update(ctx context.Context, in *metrics.Metrics) (*metri
 	}
 }
 
-func (s *serviceServer) UpdateAll(ctx context.Context, in *metrics.UpdateAllRequest) (*empty.Empty, error) {
+func (s *serviceServer) UpdateAll(ctx context.Context, in *pb.UpdateAllRequest) (*empty.Empty, error) {
 	gauges := make([]storage.Gauge, 0)
 	counters := make([]storage.Counter, 0)
 
 	for _, m := range in.Data {
 		switch m.MType {
-		case metrics.MType_COUNTER:
+		case pb.MType_COUNTER:
 			counters = append(counters, storage.Counter{Name: m.Id, Value: m.Delta})
-		case metrics.MType_GAUGE:
+		case pb.MType_GAUGE:
 			gauges = append(gauges, storage.Gauge{Name: m.Id, Value: m.Value})
 		}
 	}
@@ -152,13 +155,22 @@ type Server struct {
 	logger *zap.SugaredLogger
 }
 
-func NewServer(store MetricsStorage, logger *zap.SugaredLogger) *Server {
+func NewServer(store MetricsStorage, cfg *config.ServerConfig, logger *zap.SugaredLogger) *Server {
 	ss := &serviceServer{
 		store: store,
 	}
 
-	s := grpc.NewServer()
-	metrics.RegisterServiceServer(s, ss)
+	uis := []grpc.UnaryServerInterceptor{interceptors.UnaryLogger(logger)}
+	if cfg.TrustedSubnet != nil {
+		uis = append(uis, interceptors.UnarySubnet(cfg.TrustedSubnet))
+	}
+
+	s := grpc.NewServer(
+		grpc.ChainUnaryInterceptor(uis...),
+	)
+	pb.RegisterServiceServer(s, ss)
+	reflection.Register(s)
+
 	return &Server{
 		s:      s,
 		logger: logger,
