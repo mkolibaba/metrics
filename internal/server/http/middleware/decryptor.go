@@ -8,7 +8,7 @@ import (
 	"net/http"
 )
 
-func Decryptor(decryptor rsa.Decryptor, logger *zap.SugaredLogger) func(http.Handler) http.Handler {
+func Decryptor(decryptor *rsa.Decryptor, logger *zap.SugaredLogger) func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			body, err := io.ReadAll(r.Body)

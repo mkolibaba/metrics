@@ -14,6 +14,7 @@ const (
 	reportIntervalSecondsDefault = 10
 	pollIntervalSecondsDefault   = 10
 	rateLimitDefault             = 100
+	useGRPCDefault               = false
 )
 
 type AgentConfig struct {
@@ -23,6 +24,7 @@ type AgentConfig struct {
 	Key            string `env:"KEY" json:"key"`
 	RateLimit      int    `env:"RATE_LIMIT" json:"rate_limit"`
 	CryptoKey      string `env:"CRYPTO_KEY" json:"crypto_key"`
+	UseGRPC        bool   `env:"USE_GRPC" json:"use_grpc"`
 }
 
 type rawConfig struct {
@@ -59,6 +61,7 @@ func createDefaultConfig() rawConfig {
 	cfg.ReportInterval = reportIntervalSecondsDefault
 	cfg.PollInterval = pollIntervalSecondsDefault
 	cfg.RateLimit = rateLimitDefault
+	cfg.UseGRPC = useGRPCDefault
 	return cfg
 }
 
@@ -104,6 +107,7 @@ func parseFlags(cfg *rawConfig) {
 	flag.StringVar(&cfg.Key, "k", cfg.Key, "hash key")
 	flag.IntVar(&cfg.RateLimit, "l", cfg.RateLimit, "rate limit")
 	flag.StringVar(&cfg.CryptoKey, "crypto-key", cfg.CryptoKey, "crypto key file path")
+	flag.BoolVar(&cfg.UseGRPC, "g", cfg.UseGRPC, "use grpc client instead of http")
 	_ = flag.String("c", "", "config file path")
 	_ = flag.String("config", "", "config file path")
 	flag.Parse()

@@ -9,15 +9,11 @@ import (
 	"os"
 )
 
-type Encryptor interface {
-	Encrypt([]byte) ([]byte, error)
-}
-
-type PKCS1v15Encryptor struct {
+type Encryptor struct {
 	publicKey *rsa.PublicKey
 }
 
-func NewEncryptor(publicKeyPath string) (Encryptor, error) {
+func NewEncryptor(publicKeyPath string) (*Encryptor, error) {
 	op := "new rsa encryptor"
 
 	content, err := os.ReadFile(publicKeyPath)
@@ -39,30 +35,18 @@ func NewEncryptor(publicKeyPath string) (Encryptor, error) {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	return &PKCS1v15Encryptor{publicKey: publicKey}, nil
+	return &Encryptor{publicKey: publicKey}, nil
 }
 
-func (e *PKCS1v15Encryptor) Encrypt(data []byte) ([]byte, error) {
+func (e *Encryptor) Encrypt(data []byte) ([]byte, error) {
 	return rsa.EncryptPKCS1v15(rand.Reader, e.publicKey, data)
 }
 
-var NopEncryptor Encryptor = nopEncryptor{}
-
-type nopEncryptor struct{}
-
-func (nopEncryptor) Encrypt(data []byte) ([]byte, error) {
-	return data, nil
-}
-
-type Decryptor interface {
-	Decrypt([]byte) ([]byte, error)
-}
-
-type PKCS1v15Decryptor struct {
+type Decryptor struct {
 	privateKey *rsa.PrivateKey
 }
 
-func NewDecryptor(privateKeyPath string) (Decryptor, error) {
+func NewDecryptor(privateKeyPath string) (*Decryptor, error) {
 	op := "new rsa decryptor"
 
 	content, err := os.ReadFile(privateKeyPath)
@@ -84,17 +68,9 @@ func NewDecryptor(privateKeyPath string) (Decryptor, error) {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	return &PKCS1v15Decryptor{privateKey: privateKey}, nil
+	return &Decryptor{privateKey: privateKey}, nil
 }
 
-func (e *PKCS1v15Decryptor) Decrypt(data []byte) ([]byte, error) {
+func (e *Decryptor) Decrypt(data []byte) ([]byte, error) {
 	return rsa.DecryptPKCS1v15(rand.Reader, e.privateKey, data)
-}
-
-var NopDecryptor Decryptor = nopDecryptor{}
-
-type nopDecryptor struct{}
-
-func (nopDecryptor) Decrypt(data []byte) ([]byte, error) {
-	return data, nil
 }
