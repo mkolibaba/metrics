@@ -78,7 +78,7 @@ func (s *serviceServer) GetAll(ctx context.Context, in *empty.Empty) (*pb.GetAll
 	for k, v := range gauges {
 		result = append(result, &pb.Metrics{
 			Id:    k,
-			MType: metrics.MType_GAUGE,
+			MType: pb.MType_GAUGE,
 			Value: v,
 		})
 	}
@@ -196,6 +196,8 @@ func (s *Server) Start(ctx context.Context, addr string) error {
 	if err := s.s.Serve(listen); err != nil {
 		return fmt.Errorf("failed to serve: %v", err)
 	}
+
+	s.logger.Infof("server stopped")
 
 	wg.Wait()
 	return nil

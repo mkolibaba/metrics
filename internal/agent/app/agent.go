@@ -8,7 +8,6 @@ import (
 	httpclient "github.com/mkolibaba/metrics/internal/agent/http/client"
 	"github.com/mkolibaba/metrics/internal/agent/sender"
 	"github.com/mkolibaba/metrics/internal/common/log"
-	"github.com/mkolibaba/metrics/internal/common/rsa"
 	"go.uber.org/zap"
 	stdlog "log"
 	"os/signal"
@@ -31,20 +30,14 @@ func Run() {
 	}
 
 	// logger
-	logger := log.New()
+	logger, err := log.New()
+	if err != nil {
+		stdlog.Fatalf("error creating logger: %v", err)
+	}
 
 	// collector
 	c := collector.NewMetricsCollector(cfg.PollInterval, logger)
 	chGauges, chCounters := c.StartCollect(ctx)
-
-	// encryptor
-	encryptor := rsa.NopEncryptor
-	if cfg.CryptoKey != "" {
-		encryptor, err = rsa.NewEncryptor(cfg.CryptoKey)
-		if err != nil {
-			logger.Fatalf("error creating rsa encryptor: %v", err)
-		}
-	}
 
 	// server API
 	var serverAPI sender.ServerAPI
@@ -54,7 +47,7 @@ func Run() {
 			logger.Fatalf("error creating grpc client: %v", err)
 		}
 	} else {
-		serverAPI, err = httpclient.New(cfg.ServerAddress, cfg.Key, encryptor, logger)
+		serverAPI, err = httpclient.New(cfg, logger)
 		if err != nil {
 			logger.Fatalf("error creating http client: %v", err)
 		}

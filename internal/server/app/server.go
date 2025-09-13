@@ -42,7 +42,10 @@ func Run() {
 	}
 
 	// logger
-	logger := log.New()
+	logger, err := log.New()
+	if err != nil {
+		stdlog.Fatalf("error creating logger: %v", err)
+	}
 
 	// database
 	db, err := createDB(cfg.DatabaseDSN)

@@ -5,10 +5,9 @@ package client
 import (
 	"bytes"
 	"compress/gzip"
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/base64"
 	"encoding/json"
+	"github.com/mkolibaba/metrics/internal/agent/config"
+	"github.com/mkolibaba/metrics/internal/agent/http/client/middleware"
 	"github.com/mkolibaba/metrics/internal/common/rsa"
 	"net"
 
@@ -22,7 +21,6 @@ import (
 // для взаимодействия с сервером метрик.
 type ServerClient struct {
 	client    *resty.Client
-	hashKey   string
 	encryptor rsa.Encryptor
 	localIP   net.IP
 	logger    *zap.SugaredLogger
@@ -31,20 +29,31 @@ type ServerClient struct {
 // New создаёт новый клиент для отправки метрик на указанный адрес сервера.
 // serverAddress - адрес сервера, hashKey — ключ хедера HashSHA256,
 // encryptor - шифровальщик тела запроса, logger — логгер.
-func New(serverAddress, hashKey string, encryptor rsa.Encryptor, logger *zap.SugaredLogger) (*ServerClient, error) {
+func New(cfg *config.AgentConfig, logger *zap.SugaredLogger) (*ServerClient, error) {
 	client := resty.New().
-		SetBaseURL("http://" + serverAddress).
+		SetBaseURL("http://" + cfg.ServerAddress).
 		SetLogger(logger)
+
+	if cfg.CryptoKey != "" {
+		encryptor, err := rsa.NewEncryptor(cfg.CryptoKey)
+		if err != nil {
+			logger.Fatalf("error creating rsa encryptor: %v", err)
+		}
+		client.OnBeforeRequest(middleware.Encryptor(encryptor))
+	}
+
+	if cfg.Key != "" {
+		client.OnBeforeRequest(middleware.Hash(cfg.Key))
+	}
+
 	localIP, err := getLocalIP()
 	if err != nil {
 		return nil, err
 	}
 	return &ServerClient{
-		client:    client,
-		hashKey:   hashKey,
-		encryptor: encryptor,
-		localIP:   localIP,
-		logger:    logger,
+		client:  client,
+		localIP: localIP,
+		logger:  logger,
 	}, nil
 }
 
@@ -82,26 +91,11 @@ func (s *ServerClient) sendMetric(body []model.Metrics) error {
 	}
 	gw.Close()
 
-	encrypted, err := s.encryptor.Encrypt(requestBody.Bytes())
-	if err != nil {
-		return err
-	}
-	requestBody = *bytes.NewBuffer(encrypted)
-
 	request := s.client.R().
 		SetHeader("Content-Type", "application/json").
 		SetHeader("Content-Encoding", "gzip").
 		SetHeader("X-Real-IP", s.localIP.String()).
 		SetBody(requestBody.Bytes())
-
-	if s.hashKey != "" {
-		hash := hmac.New(sha256.New, []byte(s.hashKey))
-		_, err := hash.Write(requestBody.Bytes())
-		if err != nil {
-			return err
-		}
-		request.SetHeader("HashSHA256", base64.StdEncoding.EncodeToString(hash.Sum(nil)))
-	}
 
 	return retry.Do(func() error {
 		_, err := request.Post("/updates/")
