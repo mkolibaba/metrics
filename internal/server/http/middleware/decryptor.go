@@ -2,13 +2,17 @@ package middleware
 
 import (
 	"bytes"
-	"github.com/mkolibaba/metrics/internal/common/rsa"
 	"go.uber.org/zap"
 	"io"
 	"net/http"
 )
 
-func Decryptor(decryptor *rsa.Decryptor, logger *zap.SugaredLogger) func(http.Handler) http.Handler {
+//go:generate moq -stub -out body_decryptor_mock.go . BodyDecryptor
+type BodyDecryptor interface {
+	Decrypt([]byte) ([]byte, error)
+}
+
+func Decryptor(decryptor BodyDecryptor, logger *zap.SugaredLogger) func(http.Handler) http.Handler {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			body, err := io.ReadAll(r.Body)
