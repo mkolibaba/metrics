@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"maps"
+	"net/http"
 	"strconv"
 	"strings"
 	"testing"
@@ -63,3 +64,18 @@ func CreateGaugeResponseBodyJSON(id string, val float64) string {
 func CreateCounterResponseBodyJSON(id string, val int64) string {
 	return fmt.Sprintf("{\"id\": \"%s\", \"type\": \"counter\", \"delta\": %d}", id, val)
 }
+
+// alwaysFailingReader имитирует reader, который всегда возвращает ошибку.
+type alwaysFailingReader struct{}
+
+func (er *alwaysFailingReader) Read(p []byte) (n int, err error) {
+	return 0, io.ErrUnexpectedEOF
+}
+
+func (er *alwaysFailingReader) Close() error {
+	return nil
+}
+
+var AlwaysFailingReader = &alwaysFailingReader{}
+
+var EmptyHTTPHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})

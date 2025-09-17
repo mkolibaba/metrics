@@ -2,22 +2,89 @@
 
 version: '3'
 
+output: prefixed
+
 vars:
-  PORT: 12345
   BIN_AGENT_PATH: bin/agent
   BIN_SERVER_PATH: bin/server
   BIN_STATICLINT_PATH: bin/staticlint
   BIN_STATICTEST_PATH: bin/statictest
   BIN_METRICSTEST_PATH: bin/metricstest
+  PROTO_PATH: internal/common/grpc/proto
   BUILD_INFO_PACKAGE: github.com/mkolibaba/metrics/internal/common/build
   BUILD_LGFLAGS: -X '{{.BUILD_INFO_PACKAGE}}.buildVersion=$(git symbolic-ref --short HEAD)' -X '{{.BUILD_INFO_PACKAGE}}.buildDate=$(date +'%Y/%m/%d')' -X '{{.BUILD_INFO_PACKAGE}}.buildCommit=$(git rev-parse HEAD)'
+  DATABASE_DSN: 'postgres://postgres:postgres@localhost:5432/postgres'
+  SH_RANDOM_UNUSED_PORT: comm -23 <(seq 12341 12349) <(ss -tan | awk '{print $4}' | cut -d':' -f2 | grep "[0-9]\{1,5\}" | sort | uniq) | shuf | head -n 1
 
 tasks:
-  all-tests:
+  # Generate
+
+  gen-proto:
+    desc: Generate proto
     cmds:
-      - task: tests
+      - (cd {{.PROTO_PATH}};protoc --go_out=gen --go_opt=paths=source_relative --go-grpc_out=gen --go-grpc_opt=paths=source_relative --go_opt=default_api_level=API_OPAQUE *.proto)
+
+  # Build
+
+  build:
+    desc: Build all apps
+    run: once
+    deps:
+      - build:agent
+      - build:server
+      - build:staticlint
+
+  build:agent:
+    desc: Build agent app
+    cmds:
+      - go build -ldflags "{{.BUILD_LGFLAGS}}" -buildvcs=false -o {{.BIN_AGENT_PATH}} cmd/agent/main.go
+    sources:
+      - ./*.go
+    generates:
+      - '{{.BIN_AGENT_PATH}}'
+
+  build:server:
+    desc: Build server app
+    cmds:
+      - go build -ldflags "{{.BUILD_LGFLAGS}}" -buildvcs=false -o {{.BIN_SERVER_PATH}} cmd/server/main.go
+    sources:
+      - ./*.go
+    generates:
+      - '{{.BIN_SERVER_PATH}}'
+
+  build:staticlint:
+    desc: Build staticlint app
+    cmds:
+      - go build -buildvcs=false -o {{.BIN_STATICLINT_PATH}} cmd/staticlint/main.go
+    sources:
+      - ./*.go
+    generates:
+      - '{{.BIN_STATICLINT_PATH}}'
+
+  # Test
+
+  test:
+    desc: Run tests
+    cmds:
+      - go test ./...
+
+  test:all:
+    desc: Run all tests
+    cmds:
+      - task: test
       - task: run-statictest
       - task: run-metricstest
+
+  test:coverage:
+    desc: Run tests with coverage
+    vars:
+      TMP_FILE: coverage.tmp.out
+      OUT_FILE: coverage.out
+    cmds:
+      - go test -coverprofile={{.TMP_FILE}} -coverpkg=$(go list ./... | paste -sd ',' -) ./...
+      - cat {{.TMP_FILE}} | grep -v '_mock.go' | grep -v '/testutils/' > {{.OUT_FILE}}
+      - go tool cover -func {{.OUT_FILE}}
+      - go tool cover -html {{.OUT_FILE}} -o coverage.html
 
   download-statictest:
     desc: Download statictest
@@ -25,7 +92,7 @@ tasks:
       - '[ -e {{.BIN_STATICTEST_PATH}} ]'
     cmds:
       - echo 'Downloading statictest to {{.BIN_STATICTEST_PATH}}'
-      - | 
+      - |
         curl -s https://api.github.com/repos/yandex-practicum/go-autotests/releases/latest \
         | grep "browser_download_url.*statictest\"" \
         | cut -d : -f 2,3 \
@@ -40,18 +107,20 @@ tasks:
       - echo 'Downloading metricstest to {{.BIN_METRICSTEST_PATH}}'
       - |
         curl -s https://api.github.com/repos/yandex-practicum/go-autotests/releases/latest \
-        | grep "browser_download_url.*metricstest\"" \
+        | grep "browser_download_url.*metricstest_v2\"" \
         | cut -d : -f 2,3 \
         | tr -d \" \
         | wget -qi - -O {{.BIN_METRICSTEST_PATH}}
 
   run-statictest:
+    internal: true
     deps:
       - download-statictest
     cmds:
       - go vet -vettool={{.BIN_STATICTEST_PATH}} ./...
 
   run-staticlint:
+    internal: true
     deps:
       - build-staticlint
     cmds:
@@ -61,7 +130,9 @@ tasks:
     deps:
       - download-metricstest
     cmds:
-      - task: build-apps
+      - task: build
+      - defer: rm {{.BIN_AGENT_PATH}}
+      - defer: rm {{.BIN_SERVER_PATH}}
       - task: iter1
       - task: iter2
       - task: iter3
@@ -77,117 +148,111 @@ tasks:
       - task: iter13
       - task: iter14
       - task: iter14-race
-      - rm {{.BIN_AGENT_PATH}}
-      - rm {{.BIN_SERVER_PATH}}
 
-  tests:
+  iter:
+    internal: true
+    vars:
+      PORT:
+        sh: '{{.SH_RANDOM_UNUSED_PORT}}'
     cmds:
-      - go test ./...
-
-  build-apps:
-    deps:
-      - build-agent
-      - build-server
-
-  build-agent:
-    cmds:
-      - go build -ldflags "{{.BUILD_LGFLAGS}}" -buildvcs=false -o {{.BIN_AGENT_PATH}} cmd/agent/main.go
-
-  build-server:
-    cmds:
-      - go build -ldflags "{{.BUILD_LGFLAGS}}" -buildvcs=false -o {{.BIN_SERVER_PATH}} cmd/server/main.go
-
-  build-staticlint:
-    cmds:
-      - go build -buildvcs=false -o {{.BIN_STATICLINT_PATH}} cmd/staticlint/main.go
+      - task: build
+      - ./bin/metricstest -test.v -test.run={{.TEST_RUN}} -binary-path={{.BIN_SERVER_PATH}} -agent-binary-path={{.BIN_AGENT_PATH}} -server-port={{.PORT}} -source-path=. {{.REST}}
 
   iter1:
-    internal: true
     cmds:
-      - ./bin/metricstest -test.v -test.run=^TestIteration1$ -binary-path={{.BIN_SERVER_PATH}}
+      - task: iter
+        vars:
+          TEST_RUN: ^TestIteration1$
 
   iter2:
-    internal: true
     cmds:
-      - ./bin/metricstest -test.v -test.run=^TestIteration2[AB]*$ -agent-binary-path={{.BIN_AGENT_PATH}} -source-path=.
+      - task: iter
+        vars:
+          TEST_RUN: ^TestIteration2[AB]*$
 
   iter3:
-    internal: true
     cmds:
-      - ./bin/metricstest -test.v -test.run=^TestIteration3[AB]*$ -binary-path={{.BIN_SERVER_PATH}} -agent-binary-path={{.BIN_AGENT_PATH}} -source-path=.
+      - task: iter
+        vars:
+          TEST_RUN: ^TestIteration3[AB]*$
 
   iter4:
-    internal: true
     cmds:
-      - ./bin/metricstest -test.v -test.run=^TestIteration4$ -binary-path={{.BIN_SERVER_PATH}} -agent-binary-path={{.BIN_AGENT_PATH}} -server-port={{.PORT}} -source-path=.
+      - task: iter
+        vars:
+          TEST_RUN: ^TestIteration4$
 
   iter5:
-    internal: true
-    env:
-      ADDRESS: localhost:{{.PORT}}
     cmds:
-      - ./bin/metricstest -test.v -test.run=^TestIteration5$ -binary-path={{.BIN_SERVER_PATH}} -agent-binary-path={{.BIN_AGENT_PATH}} -server-port={{.PORT}} -source-path=.
+      - task: iter
+        vars:
+          TEST_RUN: ^TestIteration5$
+        env:
+          ADDRESS: localhost:{{.PORT}}
 
   iter6:
-    internal: true
     cmds:
-      - ./bin/metricstest -test.v -test.run=^TestIteration6$ -source-path=.
+      - task: iter
+        vars:
+          TEST_RUN: ^TestIteration6$
 
   iter7:
-    internal: true
     cmds:
-      - ./bin/metricstest -test.v -test.run=^TestIteration7$ -binary-path={{.BIN_SERVER_PATH}} -agent-binary-path={{.BIN_AGENT_PATH}} -source-path=.
+      - task: iter
+        vars:
+          TEST_RUN: ^TestIteration7$
 
   iter8:
-    internal: true
     cmds:
-      - ./bin/metricstest -test.v -test.run=^TestIteration8$ -binary-path={{.BIN_SERVER_PATH}} -agent-binary-path={{.BIN_AGENT_PATH}} -server-port={{.PORT}} -source-path=.
+      - task: iter
+        vars:
+          TEST_RUN: ^TestIteration8$
 
   iter9:
-    internal: true
     vars:
       JSON_FILE: db.json
     cmds:
-      - ./bin/metricstest -test.v -test.run=^TestIteration9$ -binary-path={{.BIN_SERVER_PATH}} -agent-binary-path={{.BIN_AGENT_PATH}} -server-port={{.PORT}} -source-path=. -file-storage-path={{.JSON_FILE}}
-      - rm {{.JSON_FILE}}
+      - defer: rm {{.JSON_FILE}}
+      - task: iter
+        vars:
+          TEST_RUN: ^TestIteration9$
+          REST: '-file-storage-path={{.JSON_FILE}}'
 
   iter10:
-    internal: true
-    vars:
-      DATABASE_DSN: 'postgres://postgres:postgres@localhost:5432/metrics'
     cmds:
-      - ./bin/metricstest -test.v -test.run=^TestIteration10[AB]$ -binary-path={{.BIN_SERVER_PATH}} -agent-binary-path={{.BIN_AGENT_PATH}} -server-port={{.PORT}} -source-path=. -database-dsn={{.DATABASE_DSN}}
+      - task: iter
+        vars:
+          TEST_RUN: ^TestIteration10[AB]$
+          REST: '-database-dsn={{.DATABASE_DSN}}'
 
   iter11:
-    internal: true
-    vars:
-      DATABASE_DSN: 'postgres://postgres:postgres@localhost:5432/metrics'
     cmds:
-      - ./bin/metricstest -test.v -test.run=^TestIteration11$ -binary-path={{.BIN_SERVER_PATH}} -agent-binary-path={{.BIN_AGENT_PATH}} -server-port={{.PORT}} -source-path=. -database-dsn={{.DATABASE_DSN}}
+      - task: iter
+        vars:
+          TEST_RUN: ^TestIteration11$
+          REST: '-database-dsn={{.DATABASE_DSN}}'
 
   iter12:
-    internal: true
-    vars:
-      DATABASE_DSN: 'postgres://postgres:postgres@localhost:5432/metrics'
     cmds:
-      - ./bin/metricstest -test.v -test.run=^TestIteration12$ -binary-path={{.BIN_SERVER_PATH}} -agent-binary-path={{.BIN_AGENT_PATH}} -server-port={{.PORT}} -source-path=. -database-dsn={{.DATABASE_DSN}}
+      - task: iter
+        vars:
+          TEST_RUN: ^TestIteration12$
+          REST: '-database-dsn={{.DATABASE_DSN}}'
 
   iter13:
-    internal: true
-    vars:
-      DATABASE_DSN: 'postgres://postgres:postgres@localhost:5432/metrics'
     cmds:
-      - ./bin/metricstest -test.v -test.run=^TestIteration13$ -binary-path={{.BIN_SERVER_PATH}} -agent-binary-path={{.BIN_AGENT_PATH}} -server-port={{.PORT}} -source-path=. -database-dsn={{.DATABASE_DSN}}
+      - task: iter
+        vars:
+          TEST_RUN: ^TestIteration13$
+          REST: '-database-dsn={{.DATABASE_DSN}}'
 
   iter14:
-    internal: true
-    vars:
-      DATABASE_DSN: 'postgres://postgres:postgres@localhost:5432/metrics'
-      KEY: 'qwerty'
     cmds:
-      - ./bin/metricstest -test.v -test.run=^TestIteration14$ -binary-path={{.BIN_SERVER_PATH}} -agent-binary-path={{.BIN_AGENT_PATH}} -server-port={{.PORT}} -source-path=. -database-dsn={{.DATABASE_DSN}} -key={{.KEY}}
+      - task: iter
+        vars:
+          TEST_RUN: ^TestIteration14$
+          REST: '-database-dsn={{.DATABASE_DSN}} -key=qwerty'
 
   iter14-race:
-    internal: true
     cmds:
       - go test -v -race ./...

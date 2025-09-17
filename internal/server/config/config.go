@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"flag"
 	"github.com/caarlos0/env/v11"
+	"net"
 	"os"
 	"strings"
 	"time"
@@ -14,6 +15,7 @@ const (
 	storeIntervalSecondsDefault = 300
 	fileStoragePathDefault      = "db.json"
 	restoreDefault              = true
+	useGRPCDefault              = false
 )
 
 type ServerConfig struct {
@@ -24,11 +26,14 @@ type ServerConfig struct {
 	DatabaseDSN     string `env:"DATABASE_DSN" json:"database_dsn"`
 	Key             string `env:"KEY" json:"key"`
 	CryptoKey       string `env:"CRYPTO_KEY" json:"crypto_key"`
+	TrustedSubnet   *net.IPNet
+	UseGRPC         bool `env:"USE_GRPC" json:"use_grpc"`
 }
 
 type rawConfig struct {
 	ServerConfig
-	StoreInterval int `env:"STORE_INTERVAL" json:"store_interval"`
+	StoreInterval int    `env:"STORE_INTERVAL" json:"store_interval"`
+	TrustedSubnet string `env:"TRUSTED_SUBNET" json:"trusted_subnet"`
 }
 
 // LoadServerConfig загружает конфигурацию сервера. Значения имеют следующий приоритет:
@@ -48,6 +53,13 @@ func LoadServerConfig() (*ServerConfig, error) {
 
 	result := cfg.ServerConfig
 	result.StoreInterval = time.Duration(cfg.StoreInterval) * time.Second
+	if cfg.TrustedSubnet != "" {
+		_, subnet, err := net.ParseCIDR(cfg.TrustedSubnet)
+		if err != nil {
+			return nil, err
+		}
+		result.TrustedSubnet = subnet
+	}
 
 	return &result, nil
 }
@@ -58,6 +70,7 @@ func createDefaultConfig() rawConfig {
 	cfg.StoreInterval = storeIntervalSecondsDefault
 	cfg.FileStoragePath = fileStoragePathDefault
 	cfg.Restore = restoreDefault
+	cfg.UseGRPC = useGRPCDefault
 	return cfg
 }
 
@@ -104,6 +117,8 @@ func parseFlags(cfg *rawConfig) {
 	flag.StringVar(&cfg.DatabaseDSN, "d", cfg.DatabaseDSN, "server address")
 	flag.StringVar(&cfg.Key, "k", cfg.Key, "hash key")
 	flag.StringVar(&cfg.CryptoKey, "crypto-key", cfg.CryptoKey, "crypto key file path")
+	flag.StringVar(&cfg.TrustedSubnet, "t", cfg.TrustedSubnet, "trusted subnet")
+	flag.BoolVar(&cfg.UseGRPC, "g", cfg.UseGRPC, "use grpc instead of http")
 	_ = flag.String("c", "", "config file path")
 	_ = flag.String("config", "", "config file path")
 	flag.Parse()

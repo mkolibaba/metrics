@@ -1,0 +1,39 @@
+edition = "2023";
+
+import "google/protobuf/empty.proto";
+
+package metrics;
+
+option go_package = "metrics/gen;metrics";
+
+enum MType {
+  COUNTER = 0;
+  GAUGE = 1;
+}
+
+message Metrics {
+  string id = 1;
+  MType m_type = 2;
+  sint64 delta = 3;
+  double value = 4;
+}
+
+message GetRequest {
+  string id = 1;
+  MType m_type = 2;
+}
+
+message GetAllResponse {
+  repeated Metrics result = 1;
+}
+
+message UpdateAllRequest {
+  repeated Metrics data = 1;
+}
+
+service Service {
+  rpc Get(GetRequest) returns (Metrics);
+  rpc GetAll(google.protobuf.Empty) returns (GetAllResponse);
+  rpc Update(Metrics) returns (Metrics);
+  rpc UpdateAll(UpdateAllRequest) returns (google.protobuf.Empty);
+}

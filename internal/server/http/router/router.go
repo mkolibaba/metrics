@@ -2,8 +2,10 @@ package router
 
 import (
 	"database/sql"
+	"fmt"
 	"github.com/go-chi/chi/v5"
 	"github.com/mkolibaba/metrics/internal/common/rsa"
+	"github.com/mkolibaba/metrics/internal/server/config"
 	"github.com/mkolibaba/metrics/internal/server/http/handlers/list"
 	"github.com/mkolibaba/metrics/internal/server/http/handlers/ping"
 	"github.com/mkolibaba/metrics/internal/server/http/handlers/read"
@@ -21,20 +23,23 @@ type MetricsStorage interface {
 // New создает и настраивает новый chi.Router.
 // Роутер включает в себя middleware для логирования, подписи, сжатия
 // и шифровки, а также регистрирует обработчики для всех эндпоинтов сервера метрик.
-func New(
-	store MetricsStorage,
-	db *sql.DB,
-	hashKey string,
-	logger *zap.SugaredLogger,
-	decryptor rsa.Decryptor,
-) chi.Router {
+func New(store MetricsStorage, db *sql.DB, cfg *config.ServerConfig, logger *zap.SugaredLogger) (chi.Router, error) {
 	r := chi.NewRouter()
 
 	// middleware
 	r.Use(middleware.Logger(logger))
-	r.Use(middleware.Decryptor(decryptor, logger))
-	if hashKey != "" {
-		r.Use(middleware.Hash(hashKey, logger))
+	if cfg.TrustedSubnet != nil {
+		r.Use(middleware.Subnet(cfg.TrustedSubnet))
+	}
+	if cfg.CryptoKey != "" {
+		decryptor, err := rsa.NewDecryptor(cfg.CryptoKey)
+		if err != nil {
+			return nil, fmt.Errorf("error creating decryptor: %w", err)
+		}
+		r.Use(middleware.Decryptor(decryptor, logger))
+	}
+	if cfg.Key != "" {
+		r.Use(middleware.Hash(cfg.Key, logger))
 	}
 	r.Use(middleware.Compressor(logger))
 	jsonContentTypeMiddleware := middleware.ContentType("application/json")
@@ -53,5 +58,5 @@ func New(
 	// other
 	r.Get("/ping", ping.New(db))
 
-	return r
+	return r, nil
 }
