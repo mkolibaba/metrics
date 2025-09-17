@@ -38,27 +38,19 @@ type serviceServer struct {
 }
 
 func (s *serviceServer) Get(ctx context.Context, in *pb.GetRequest) (*pb.Metrics, error) {
-	switch in.MType {
+	switch in.GetMType() {
 	case pb.MType_COUNTER:
-		counter, err := s.store.GetCounter(ctx, in.Id)
+		delta, err := s.store.GetCounter(ctx, in.GetId())
 		if errors.Is(err, storage.ErrMetricNotFound) {
 			return nil, status.Error(codes.NotFound, "metric not found")
 		}
-		return &pb.Metrics{
-			Id:    in.Id,
-			MType: in.MType,
-			Delta: counter,
-		}, nil
+		return createCounter(in.GetId(), delta), nil
 	case pb.MType_GAUGE:
-		gauge, err := s.store.GetGauge(ctx, in.Id)
+		value, err := s.store.GetGauge(ctx, in.GetId())
 		if errors.Is(err, storage.ErrMetricNotFound) {
 			return nil, status.Error(codes.NotFound, "metric not found")
 		}
-		return &pb.Metrics{
-			Id:    in.Id,
-			MType: in.MType,
-			Value: gauge,
-		}, nil
+		return createGauge(in.GetId(), value), nil
 	default:
 		return nil, status.Error(codes.InvalidArgument, "metrics type not supported")
 	}
@@ -76,45 +68,31 @@ func (s *serviceServer) GetAll(ctx context.Context, in *empty.Empty) (*pb.GetAll
 
 	result := make([]*pb.Metrics, 0, len(gauges)+len(counters))
 	for k, v := range gauges {
-		result = append(result, &pb.Metrics{
-			Id:    k,
-			MType: pb.MType_GAUGE,
-			Value: v,
-		})
+		result = append(result, createGauge(k, v))
 	}
 	for k, v := range counters {
-		result = append(result, &pb.Metrics{
-			Id:    k,
-			MType: pb.MType_COUNTER,
-			Delta: v,
-		})
+		result = append(result, createCounter(k, v))
 	}
 
-	return &pb.GetAllResponse{Result: result}, nil
+	out := &pb.GetAllResponse{}
+	out.SetResult(result)
+	return out, nil
 }
 
 func (s *serviceServer) Update(ctx context.Context, in *pb.Metrics) (*pb.Metrics, error) {
-	switch in.MType {
+	switch in.GetMType() {
 	case pb.MType_COUNTER:
-		counter, err := s.store.UpdateCounter(ctx, in.Id, in.Delta)
+		delta, err := s.store.UpdateCounter(ctx, in.GetId(), in.GetDelta())
 		if err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
-		return &pb.Metrics{
-			Id:    in.Id,
-			MType: pb.MType_COUNTER,
-			Delta: counter,
-		}, nil
+		return createCounter(in.GetId(), delta), nil
 	case pb.MType_GAUGE:
-		gauge, err := s.store.UpdateGauge(ctx, in.Id, in.Value)
+		value, err := s.store.UpdateGauge(ctx, in.GetId(), in.GetValue())
 		if err != nil {
 			return nil, status.Error(codes.Internal, err.Error())
 		}
-		return &pb.Metrics{
-			Id:    in.Id,
-			MType: pb.MType_GAUGE,
-			Value: gauge,
-		}, nil
+		return createGauge(in.GetId(), value), nil
 	default:
 		return nil, status.Error(codes.InvalidArgument, "metrics type not supported")
 	}
@@ -124,12 +102,12 @@ func (s *serviceServer) UpdateAll(ctx context.Context, in *pb.UpdateAllRequest) 
 	gauges := make([]storage.Gauge, 0)
 	counters := make([]storage.Counter, 0)
 
-	for _, m := range in.Data {
-		switch m.MType {
+	for _, m := range in.GetData() {
+		switch m.GetMType() {
 		case pb.MType_COUNTER:
-			counters = append(counters, storage.Counter{Name: m.Id, Value: m.Delta})
+			counters = append(counters, storage.Counter{Name: m.GetId(), Value: m.GetDelta()})
 		case pb.MType_GAUGE:
-			gauges = append(gauges, storage.Gauge{Name: m.Id, Value: m.Value})
+			gauges = append(gauges, storage.Gauge{Name: m.GetId(), Value: m.GetValue()})
 		}
 	}
 
@@ -201,4 +179,20 @@ func (s *Server) Start(ctx context.Context, addr string) error {
 
 	wg.Wait()
 	return nil
+}
+
+func createCounter(id string, delta int64) *pb.Metrics {
+	m := &pb.Metrics{}
+	m.SetId(id)
+	m.SetMType(pb.MType_COUNTER)
+	m.SetDelta(delta)
+	return m
+}
+
+func createGauge(id string, value float64) *pb.Metrics {
+	m := &pb.Metrics{}
+	m.SetId(id)
+	m.SetMType(pb.MType_GAUGE)
+	m.SetValue(value)
+	return m
 }

@@ -22,7 +22,7 @@ tasks:
   gen-proto:
     desc: Generate proto
     cmds:
-      - (cd {{.PROTO_PATH}};protoc --go_out=gen --go_opt=paths=source_relative --go-grpc_out=gen --go-grpc_opt=paths=source_relative *.proto)
+      - (cd {{.PROTO_PATH}};protoc --go_out=gen --go_opt=paths=source_relative --go-grpc_out=gen --go-grpc_opt=paths=source_relative --go_opt=default_api_level=API_OPAQUE *.proto)
 
   # Build
 
@@ -78,10 +78,11 @@ tasks:
   test:coverage:
     desc: Run tests with coverage
     vars:
+      TMP_FILE: coverage.tmp.out
       OUT_FILE: coverage.out
     cmds:
-#      - defer: rm coverage.out
-      - go test -coverprofile={{.OUT_FILE}} ./...
+      - go test -coverprofile={{.TMP_FILE}} -coverpkg=$(go list ./... | paste -sd ',' -) ./...
+      - cat {{.TMP_FILE}} | grep -v '_mock.go' | grep -v '/testutils/' > {{.OUT_FILE}}
       - go tool cover -func {{.OUT_FILE}}
       - go tool cover -html {{.OUT_FILE}} -o coverage.html
 

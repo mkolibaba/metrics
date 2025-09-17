@@ -2,14 +2,14 @@ package client
 
 import (
 	"context"
-	metrics "github.com/mkolibaba/metrics/internal/common/grpc/proto/gen"
+	pb "github.com/mkolibaba/metrics/internal/common/grpc/proto/gen"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
 type ServerClient struct {
 	conn *grpc.ClientConn
-	c    metrics.ServiceClient
+	c    pb.ServiceClient
 }
 
 func New(serverAddress string) (*ServerClient, error) {
@@ -17,7 +17,7 @@ func New(serverAddress string) (*ServerClient, error) {
 	if err != nil {
 		return nil, err
 	}
-	c := metrics.NewServiceClient(conn)
+	c := pb.NewServiceClient(conn)
 
 	return &ServerClient{
 		conn: conn,
@@ -26,31 +26,33 @@ func New(serverAddress string) (*ServerClient, error) {
 }
 
 func (s *ServerClient) UpdateCounters(counters map[string]int64) error {
-	data := make([]*metrics.Metrics, 0, len(counters))
+	data := make([]*pb.Metrics, 0, len(counters))
 	for name, delta := range counters {
-		data = append(data, &metrics.Metrics{
-			Id:    name,
-			MType: metrics.MType_COUNTER,
-			Delta: delta,
-		})
+		m := &pb.Metrics{}
+		m.SetId(name)
+		m.SetMType(pb.MType_COUNTER)
+		m.SetDelta(delta)
+		data = append(data, m)
 	}
 	return s.sendMetric(data)
 }
 
 func (s *ServerClient) UpdateGauges(gauges map[string]float64) error {
-	data := make([]*metrics.Metrics, 0, len(gauges))
+	data := make([]*pb.Metrics, 0, len(gauges))
 	for name, value := range gauges {
-		data = append(data, &metrics.Metrics{
-			Id:    name,
-			MType: metrics.MType_GAUGE,
-			Value: value,
-		})
+		m := &pb.Metrics{}
+		m.SetId(name)
+		m.SetMType(pb.MType_COUNTER)
+		m.SetValue(value)
+		data = append(data, m)
 	}
 	return s.sendMetric(data)
 }
 
-func (s *ServerClient) sendMetric(data []*metrics.Metrics) error {
-	_, err := s.c.UpdateAll(context.Background(), &metrics.UpdateAllRequest{Data: data})
+func (s *ServerClient) sendMetric(data []*pb.Metrics) error {
+	in := &pb.UpdateAllRequest{}
+	in.SetData(data)
+	_, err := s.c.UpdateAll(context.Background(), in)
 	return err
 }
 

@@ -37,9 +37,8 @@ func TestSubnet(t *testing.T) {
 
 			request := httptest.NewRequest(http.MethodGet, "/", nil)
 			request.Header.Set("X-Real-IP", c.ip)
-			recorder := httptest.NewRecorder()
 
-			mw(testutils.EmptyHTTPHandler).ServeHTTP(recorder, request)
+			recorder := testutils.NewTestServer("GET /", mw(testutils.EmptyHTTPHandler)).Execute(request)
 
 			testutils.AssertResponseStatusCode(t, c.wantStatus, recorder.Code)
 		})
