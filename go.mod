@@ -1,6 +1,6 @@
 module github.com/mkolibaba/metrics
 
-go 1.24.1
+go 1.25.1
 
 require (
 	github.com/caarlos0/env/v11 v11.3.1
