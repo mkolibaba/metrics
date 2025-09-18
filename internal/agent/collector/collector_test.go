@@ -1,7 +1,6 @@
 package collector
 
 import (
-	"context"
 	"testing"
 	"testing/synctest"
 	"time"
@@ -11,18 +10,16 @@ import (
 
 func TestMetricsCollector_StartCollect(t *testing.T) {
 	pollInterval := 100 * time.Millisecond
-	timeout := 150 * time.Millisecond
-	maxTimeout := 200 * time.Millisecond
+	waitDuration := 150 * time.Millisecond
 
 	// Create a collector with a short poll interval for testing
 	collector := NewMetricsCollector(pollInterval, zaptest.NewLogger(t).Sugar())
 
 	synctest.Test(t, func(t *testing.T) {
-		ctx, cancel := context.WithTimeout(t.Context(), timeout)
-		defer cancel()
-
 		// Start collecting in a goroutine
-		chGauges, chCounters := collector.StartCollect(ctx)
+		chGauges, chCounters := collector.StartCollect(t.Context())
+
+		time.Sleep(waitDuration)
 
 		// Check if we received metrics
 		select {
@@ -34,8 +31,8 @@ func TestMetricsCollector_StartCollect(t *testing.T) {
 			if _, ok := gauges["RandomValue"]; !ok {
 				t.Error("Expected RandomValue metric to be present")
 			}
-		case <-time.After(maxTimeout):
-			t.Error("Timeout waiting for gauge metrics")
+		default:
+			t.Error("Expected gauges to be present")
 		}
 
 		select {
@@ -46,39 +43,45 @@ func TestMetricsCollector_StartCollect(t *testing.T) {
 			} else if pollCount <= 0 {
 				t.Error("Expected PollCount to be greater than 0", pollCount)
 			}
-		case <-time.After(maxTimeout):
-			t.Error("Timeout waiting for counter metrics")
+		default:
+			t.Error("Expected counters to be present")
 		}
 	})
 }
 
 func TestMetricsCollector_ShouldNotCollect(t *testing.T) {
 	pollInterval := 100 * time.Millisecond
-	timeout := 50 * time.Millisecond
-	maxTimeout := 200 * time.Millisecond
+	waitDuration := 50 * time.Millisecond
 
 	collector := NewMetricsCollector(pollInterval, zaptest.NewLogger(t).Sugar())
 
 	synctest.Test(t, func(t *testing.T) {
-		ctx, cancel := context.WithTimeout(t.Context(), timeout)
-		defer cancel()
+		chGauges, chCounters := collector.StartCollect(t.Context())
 
-		chGauges, chCounters := collector.StartCollect(ctx)
+		time.Sleep(waitDuration)
+
+		gaugesArePresent := false
 
 		select {
-		case gauges, ok := <-chGauges:
-			if ok {
-				t.Error("Expected gauge metrics not to be present", gauges)
-			}
-		case <-time.After(maxTimeout):
+		case _, ok := <-chGauges:
+			gaugesArePresent = ok
+		default:
 		}
 
+		if gaugesArePresent {
+			t.Error("Expected gauge metrics not to be present")
+		}
+
+		countersArePresent := false
+
 		select {
-		case counters, ok := <-chCounters:
-			if ok {
-				t.Error("Expected counter metrics not to be present", counters)
-			}
-		case <-time.After(maxTimeout):
+		case _, ok := <-chCounters:
+			countersArePresent = ok
+		default:
+		}
+
+		if countersArePresent {
+			t.Error("Expected counter metrics not to be present")
 		}
 	})
 }
